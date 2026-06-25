@@ -1,0 +1,15 @@
+{
+  "extends": ["next/core-web-vitals", "plugin:@typescript-eslint/strict-type-checked"],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": { "project": "./tsconfig.json" },
+  "rules": {
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/consistent-type-imports": "error",
+    "@typescript-eslint/no-misused-promises": ["error", { "checksVoidReturn": { "attributes": false } }],
+    "no-restricted-imports": ["error", { "patterns": [{ "group": ["googleapis"], "importNames": ["google"], "message": "Use sheets adapter at @/lib/sheets/ instead." }] }]
+  },
+  "overrides": [
+    { "files": ["src/lib/sheets/**/*.ts"], "rules": { "no-restricted-imports": "off" } },
+    { "files": ["tests/**/*.ts", "tests/**/*.tsx"], "rules": { "@typescript-eslint/no-unsafe-assignment": "off", "@typescript-eslint/no-unsafe-call": "off", "@typescript-eslint/no-unsafe-member-access": "off" } }
+  ]
+}

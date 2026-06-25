@@ -1,28 +1,22 @@
-# OS files
+/node_modules
+/.pnp
+.pnp.js
+/coverage
+/playwright-report
+/test-results
+/.next/
+/out/
+/build
 .DS_Store
-Thumbs.db
-
-# Editor/IDE
-.vscode/
-.idea/
-*.swp
-
-# Logs
-*.log
-logs/
-
-# Dependencies
-node_modules/
-__pycache__/
-*.pyc
-venv/
+*.pem
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env*.local
 .env
-
-# Build output
-dist/
-build/
-*.egg-info/
-
-# Misc
-.cache/
-.tmp/
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+public/sw.js
+public/sw.js.map
+public/swe-worker-*.js
