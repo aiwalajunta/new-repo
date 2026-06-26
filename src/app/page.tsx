@@ -1,63 +1,69 @@
 "use client";
-import { motion } from "framer-motion";
-import { ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { CalendarPlus, Search, Phone, MapPin, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ProductCard } from "@/components/product/product-card";
-import { CategoryCard } from "@/components/product/category-card";
-import { ProductGridSkeleton } from "@/components/common/skeleton";
-import { useAppStore } from "@/store/app-store";
-import { getCurrentFestival, getFestiveGreeting } from "@/lib/utils/festival";
-import { CATEGORIES } from "@/lib/constants";
-import { useQuery } from "@tanstack/react-query";
-import type { Product, Category } from "@/lib/sheets/schemas";
-
-async function fetchProducts(): Promise<Product[]> { const res = await fetch("/api/products"); if (!res.ok) throw new Error("Failed"); return ((await res.json()) as { data: Product[] }).data; }
-async function fetchCategories(): Promise<Category[]> { const res = await fetch("/api/categories"); if (!res.ok) throw new Error("Failed"); return ((await res.json()) as { data: Category[] }).data; }
+import { APP_CONFIG } from "@/lib/constants";
+import { MOCK_CATEGORIES } from "@/lib/sheets/mock-data";
+import { BottomNav } from "@/components/layout/bottom-nav";
+import { CustomerHeader } from "@/components/layout/customer-header";
 
 export default function HomePage() {
-  const language = useAppStore((s) => s.language);
-  const festival = getCurrentFestival();
-  const greeting = getFestiveGreeting(language);
-  const { data: products, isLoading: productsLoading } = useQuery({ queryKey: ["products"], queryFn: fetchProducts });
-  const { data: categories } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
-  const newArrivals = products?.filter((p) => p.isNewArrival).slice(0, 6) ?? [];
-  const trending = products?.filter((p) => p.isTrending).slice(0, 6) ?? [];
-  const displayCategories = categories ?? CATEGORIES.map((c, i) => ({ id: `cat_${String(i + 1).padStart(3, "0")}`, name: c.name, slug: c.slug, parentId: "", displayOrder: i + 1, iconUrl: "", isActive: true }));
-
   return (
-    <div className="space-y-8 px-4 py-4">
-      <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="relative overflow-hidden rounded-2xl px-6 py-10 text-center" style={{ background: festival ? `linear-gradient(135deg, ${festival.color}22, #6B1D3A15, ${festival.color}11)` : "linear-gradient(135deg, #C8963B15, #6B1D3A10, #C8963B08)" }}>
-        <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-brand-gold/10 blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-4 -left-4 h-24 w-24 rounded-full bg-brand-wine/10 blur-xl" />
-        {festival && (<motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }} className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-brand-wine backdrop-blur-sm"><Sparkles size={14} /><span>{festival.name} {language === "hi" ? "संग्रह" : "Collection"}</span></motion.div>)}
-        <h1 className="mb-2 font-display text-2xl font-bold text-brand-text sm:text-3xl">{greeting}</h1>
-        <p className="mb-5 text-sm text-brand-text-muted sm:text-base">{language === "hi" ? "हर अवसर के लिए हस्तनिर्मित एथनिक शान" : "Handcrafted ethnic elegance for every occasion"}</p>
-        <Button asChild><Link href="/categories">{language === "hi" ? "संग्रह देखें" : "Explore Collection"}<ArrowRight size={16} className="ml-1.5" /></Link></Button>
-      </motion.section>
-
-      <section>
-        <div className="mb-4 flex items-center justify-between"><h2 className="font-display text-lg font-semibold text-brand-text">{language === "hi" ? "श्रेणी से खरीदें" : "Shop by Category"}</h2><Link href="/categories" className="text-sm font-medium text-brand-wine hover:underline">{language === "hi" ? "सभी देखें" : "View All"}</Link></div>
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">{displayCategories.map((cat, i) => (<CategoryCard key={cat.id} category={cat} index={i} />))}</div>
-      </section>
-
-      <section>
-        <div className="mb-4 flex items-center justify-between"><h2 className="font-display text-lg font-semibold text-brand-text">{language === "hi" ? "नई आवक" : "New Arrivals"}</h2><Link href="/categories?filter=new" className="text-sm font-medium text-brand-wine hover:underline">{language === "hi" ? "सभी देखें" : "View All"}</Link></div>
-        {productsLoading ? (<ProductGridSkeleton count={4} />) : newArrivals.length > 0 ? (<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{newArrivals.map((product, i) => (<ProductCard key={product.id} product={product} priority={i < 2} />))}</div>) : (<div className="rounded-2xl border border-dashed border-brand-border bg-white/50 px-6 py-12 text-center"><p className="text-sm text-brand-text-muted">{language === "hi" ? "जल्द नए उत्पाद आ रहे हैं!" : "New products coming soon!"}</p></div>)}
-      </section>
-
-      {trending.length > 0 && (
-        <section>
-          <div className="mb-4 flex items-center justify-between"><h2 className="font-display text-lg font-semibold text-brand-text">{language === "hi" ? "ट्रेंडिंग" : "Trending Now"} 🔥</h2><Link href="/categories?filter=trending" className="text-sm font-medium text-brand-wine hover:underline">{language === "hi" ? "सभी देखें" : "View All"}</Link></div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{trending.map((product) => (<ProductCard key={product.id} product={product} />))}</div>
+    <div className="flex min-h-screen flex-col">
+      <CustomerHeader />
+      <main className="flex-1 pb-20">
+        <section className="relative overflow-hidden bg-gradient-to-br from-brand-wine to-brand-wine-dark px-6 py-14 text-center text-white">
+          <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-brand-gold/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="relative">
+            <p className="text-xs font-medium uppercase tracking-widest text-brand-gold/80 mb-2">Welcome to</p>
+            <h1 className="font-display text-3xl font-bold">{APP_CONFIG.name}</h1>
+            <p className="mt-1 text-brand-gold/90 font-medium">{APP_CONFIG.tagline}</p>
+            <p className="mt-3 text-sm text-white/70 max-w-xs mx-auto">India&apos;s finest ethnic textile collection. Browse and book your showroom visit.</p>
+            <div className="mt-6 flex gap-3 justify-center flex-wrap">
+              <Link href="/browse"><Button className="bg-brand-gold text-brand-wine font-bold hover:bg-brand-gold-light gap-2"><Search size={16} /> Browse Products</Button></Link>
+              <Link href="/appointment"><Button variant="outline" className="border-white/40 text-white hover:bg-white/10 gap-2"><CalendarPlus size={16} /> Book Visit</Button></Link>
+            </div>
+          </motion.div>
         </section>
-      )}
-
-      <section className="rounded-2xl border border-brand-gold/30 bg-gradient-to-r from-brand-gold/5 to-brand-wine/5 p-5 text-center">
-        <h3 className="mb-1 font-display text-base font-semibold text-brand-text">{language === "hi" ? "ऐप इंस्टॉल करें" : "Install Our App"}</h3>
-        <p className="mb-3 text-xs text-brand-text-muted">{language === "hi" ? "बेहतर अनुभव के लिए होम स्क्रीन पर जोड़ें" : "Add to home screen for the best experience"}</p>
-        <Button variant="secondary" size="sm">{language === "hi" ? "इंस्टॉल करें" : "Install App"}</Button>
-      </section>
+        <section className="bg-brand-cream px-6 py-3 border-b border-brand-border">
+          <div className="flex items-center justify-around gap-4 text-xs text-brand-text-muted">
+            <div className="flex items-center gap-1"><Clock size={12} /> Mon–Sat 10am–8pm</div>
+            <div className="flex items-center gap-1"><Phone size={12} /> +91 98765 43210</div>
+            <div className="flex items-center gap-1"><MapPin size={12} /> Main Market</div>
+          </div>
+        </section>
+        <section className="px-4 py-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg font-bold text-brand-text">Shop by Category</h2>
+            <Link href="/browse" className="text-sm text-brand-wine hover:underline">View All</Link>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {MOCK_CATEGORIES.slice(0, 8).map((cat, i) => (
+              <motion.div key={cat.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                <Link href={`/browse?cat=${cat.slug}`} className="flex flex-col items-center gap-1.5 rounded-2xl border border-brand-border bg-white p-3 shadow-sm hover:border-brand-gold hover:shadow-md transition-all">
+                  <span className="text-2xl">{cat.icon}</span>
+                  <span className="text-center text-[10px] font-medium text-brand-text leading-tight">{cat.name}</span>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+        <section className="mx-4 mb-6 rounded-2xl bg-gradient-to-br from-brand-wine/5 to-brand-gold/5 border border-brand-border p-5">
+          <h2 className="font-display text-base font-bold text-brand-text mb-4">How to Shop With Us</h2>
+          <div className="space-y-3">
+            {[{step:"1",title:"Browse Our Collection",desc:"Explore sarees, lehengas, kurtis and more"},{step:"2",title:"Select Products",desc:"Mark items you want to see in our showroom"},{step:"3",title:"Book Your Visit",desc:"Choose a convenient date and time"},{step:"4",title:"We Prepare Everything",desc:"All items will be ready when you arrive"}].map((s) => (
+              <div key={s.step} className="flex items-start gap-3">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-wine text-white text-xs font-bold">{s.step}</div>
+                <div><p className="text-sm font-semibold text-brand-text">{s.title}</p><p className="text-xs text-brand-text-muted">{s.desc}</p></div>
+              </div>
+            ))}
+          </div>
+          <Link href="/appointment" className="mt-4 block"><Button className="w-full gap-2"><CalendarPlus size={16} /> Book Your Visit Now</Button></Link>
+        </section>
+      </main>
+      <BottomNav />
     </div>
   );
 }
