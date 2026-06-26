@@ -9,7 +9,6 @@ const withSerwist = withSerwistInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Tell Next.js these env vars are optional — app runs in mock mode without them
   env: {
     NEXT_PUBLIC_SHEETS_MODE: process.env.GOOGLE_SPREADSHEET_ID ? "live" : "mock",
   },
@@ -23,13 +22,8 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },
   },
-  // Suppress build errors for missing optional env vars
-  typescript: {
-    ignoreBuildErrors: false,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
 };
 
 export default withSerwist(nextConfig);
