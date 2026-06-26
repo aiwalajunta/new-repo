@@ -1,12 +1,12 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, CalendarCheck, Users, BarChart3, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Package, CalendarCheck, Users, BarChart3, LogOut, Menu, X, Search } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { APP_CONFIG, OWNER_NAV } from "@/lib/constants";
 import { useState } from "react";
 
-const ICONS = { LayoutDashboard, Package, CalendarCheck, Users, BarChart3 } as const;
+const ICONS = { LayoutDashboard, Package, CalendarCheck, Users, BarChart3, Search } as const;
 
 export function DashboardSidebar() {
   const pathname = usePathname();

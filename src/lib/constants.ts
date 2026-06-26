@@ -21,6 +21,7 @@ export const STOCK_CRITICAL_THRESHOLD = 2;
 export const OWNER_NAV = [
   { href: "/dashboard", label: "Dashboard", labelHi: "डैशबोर्ड", icon: "LayoutDashboard" },
   { href: "/dashboard/products", label: "Products", labelHi: "उत्पाद", icon: "Package" },
+  { href: "/dashboard/staff-lookup", label: "Price Lookup", labelHi: "मूल्य खोज", icon: "Search" },
   { href: "/dashboard/appointments", label: "Appointments", labelHi: "अपॉइंटमेंट", icon: "CalendarCheck" },
   { href: "/dashboard/customers", label: "Customers", labelHi: "ग्राहक", icon: "Users" },
   { href: "/dashboard/inventory", label: "Inventory", labelHi: "इन्वेंटरी", icon: "BarChart3" },
