@@ -1,14 +1,20 @@
 import { FESTIVALS } from "@/lib/constants";
 import type { Festival } from "@/types";
 
-type FestivalKey = keyof typeof FESTIVALS;
+const FESTIVALS_MAP = {
+  diwali: { name: "Diwali", nameHi: "दिवाली", months: [10, 11], color: "#FF9933" },
+  eid: { name: "Eid", nameHi: "ईद", months: [3, 4, 6, 7], color: "#006400" },
+  wedding_season: { name: "Wedding Season", nameHi: "शादी का मौसम", months: [11, 12, 1, 2], color: "#B8860B" },
+  navratri: { name: "Navratri", nameHi: "नवरात्रि", months: [3, 4, 9, 10], color: "#FF4500" },
+  holi: { name: "Holi", nameHi: "होली", months: [3], color: "#FF69B4" },
+  dussehra: { name: "Dussehra", nameHi: "दशहरा", months: [10], color: "#FF6347" },
+} as const;
 
-export function getCurrentFestival(): { key: Festival; name: string; nameHi: string; color: string } | null {
+export function getCurrentFestival(): { key: string; name: string; nameHi: string; color: string } | null {
   const currentMonth = new Date().getMonth() + 1;
-  for (const key of Object.keys(FESTIVALS) as FestivalKey[]) {
-    const festival = FESTIVALS[key];
+  for (const [key, festival] of Object.entries(FESTIVALS_MAP)) {
     if ((festival.months as readonly number[]).includes(currentMonth)) {
-      return { key: key as Festival, name: festival.name, nameHi: festival.nameHi, color: festival.color };
+      return { key, name: festival.name, nameHi: festival.nameHi, color: festival.color };
     }
   }
   return null;
@@ -23,13 +29,7 @@ export function getFestiveGreeting(lang: "en" | "hi" = "en"): string {
     wedding_season: { en: "Wedding season is here!", hi: "शादी का मौसम आ गया!" },
     navratri: { en: "Dance in color this Navratri!", hi: "नवरात्रि पर रंगों में झूमें!" },
     holi: { en: "Play Holi in style!", hi: "होली को स्टाइल में मनाएं!" },
-    christmas: { en: "Festive elegance for Christmas", hi: "क्रिसमस की शान" },
-    pongal: { en: "Pongal celebrations await!", hi: "पोंगल का जश्न!" },
-    onam: { en: "Onam — Celebrate in grace", hi: "ओणम — शान से मनाएं" },
-    raksha_bandhan: { en: "Dress up for Raksha Bandhan!", hi: "रक्षा बंधन पर सजें!" },
-    karwa_chauth: { en: "Look stunning this Karwa Chauth", hi: "करवा चौथ पर दमकें" },
   };
   const greeting = greetings[festival.key];
-  if (!greeting) return lang === "en" ? "Celebrate in style!" : "शान से मनाएं!";
-  return greeting[lang];
+  return greeting ? greeting[lang] : (lang === "en" ? "Celebrate in style!" : "शान से मनाएं!");
 }
