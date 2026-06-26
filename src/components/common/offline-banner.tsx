@@ -4,7 +4,7 @@ import { WifiOff } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 
 export function OfflineBanner() {
-  const { isOffline, setIsOffline, language } = useAppStore();
+  const { isOffline, setIsOffline } = useAppStore();
   useEffect(() => {
     const on = () => setIsOffline(false);
     const off = () => setIsOffline(true);
@@ -16,8 +16,7 @@ export function OfflineBanner() {
   if (!isOffline) return null;
   return (
     <div className="sticky top-14 z-30 flex items-center justify-center gap-2 bg-amber-100 px-4 py-2 text-sm text-amber-800">
-      <WifiOff size={16} />
-      <span>{language === "hi" ? "आप ऑफ़लाइन हैं। कैश्ड डेटा दिखा रहे हैं।" : "You are offline. Showing cached data."}</span>
+      <WifiOff size={16} /> You are offline. Showing cached data.
     </div>
   );
 }
