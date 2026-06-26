@@ -25,27 +25,6 @@
     --ring: 340 57% 27%;
     --radius: 0.75rem;
   }
-  .dark {
-    --background: 330 28% 8%;
-    --foreground: 30 20% 92%;
-    --card: 330 20% 12%;
-    --card-foreground: 30 20% 92%;
-    --popover: 330 20% 12%;
-    --popover-foreground: 30 20% 92%;
-    --primary: 37 55% 50%;
-    --primary-foreground: 330 28% 8%;
-    --secondary: 340 40% 35%;
-    --secondary-foreground: 30 20% 92%;
-    --muted: 330 15% 18%;
-    --muted-foreground: 30 10% 60%;
-    --accent: 160 40% 35%;
-    --accent-foreground: 30 20% 92%;
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 330 15% 20%;
-    --input: 330 15% 20%;
-    --ring: 37 55% 50%;
-  }
 }
 @layer base {
   * { @apply border-border; }
@@ -54,7 +33,6 @@
 }
 @layer utilities {
   .glass { @apply border border-white/20 bg-white/60 backdrop-blur-xl; }
-  .glass-dark { @apply border border-white/10 bg-black/40 backdrop-blur-xl; }
   .skeleton { @apply relative overflow-hidden rounded-lg bg-brand-cream; }
   .skeleton::after { content: ""; @apply absolute inset-0 -translate-x-full animate-shimmer; background: linear-gradient(90deg, transparent, rgba(200,150,59,0.08), transparent); }
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
