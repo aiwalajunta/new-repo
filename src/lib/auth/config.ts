@@ -7,8 +7,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: { signIn: "/login", error: "/login" },
   providers: [
     CredentialsProvider({
-      id: "owner-credentials",
-      name: "Owner Login",
+      id: "staff-login", name: "Staff Login",
       credentials: { email: { label: "Email", type: "email" }, password: { label: "Password", type: "password" } },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
@@ -17,57 +16,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const { SHEETS_AVAILABLE } = await import("@/lib/sheets/mock-data");
           if (!SHEETS_AVAILABLE) {
-            // Demo credentials when sheets not configured
-            if (email === "admin@adityatextile.com" && password === "admin123") {
-              return { id: "usr_owner_demo", email, name: "Aditya Owner", role: "owner" };
-            }
+            if (email === "owner@adityatextile.com" && password === "owner123") return { id: "staff_owner_demo", email, name: "Aditya (Owner)", role: "owner" };
+            if (email === "staff@adityatextile.com" && password === "staff123") return { id: "staff_001_demo", email, name: "Ravi (Staff)", role: "staff" };
             return null;
           }
-          const { usersAdapter } = await import("@/lib/sheets");
-          const user = await usersAdapter.getUserByEmail(email);
-          if (!user || user.role !== "owner") return null;
-          const isValid = await compare(password, user.passwordHash);
-          if (!isValid) return null;
-          await usersAdapter.updateLastLogin(user.id);
-          return { id: user.id, email: user.email, name: user.name, role: user.role };
+          // TODO: query Staff sheet
+          return null;
         } catch { return null; }
       },
     }),
     CredentialsProvider({
-      id: "customer-otp",
-      name: "Customer OTP",
+      id: "customer-otp", name: "Customer OTP",
       credentials: { phone: { label: "Phone", type: "tel" }, otp: { label: "OTP", type: "text" } },
       async authorize(credentials) {
         if (!credentials?.phone || !credentials?.otp) return null;
-        const phone = credentials.phone as string;
-        const otp = credentials.otp as string;
-        if (otp !== "123456") return null;
+        if ((credentials.otp as string) !== "123456") return null;
         try {
+          const phone = credentials.phone as string;
           const { SHEETS_AVAILABLE } = await import("@/lib/sheets/mock-data");
-          if (!SHEETS_AVAILABLE) {
-            return { id: `usr_demo_${phone.slice(-4)}`, email: undefined, name: `Customer ${phone.slice(-4)}`, role: "customer", phone };
-          }
-          const { usersAdapter } = await import("@/lib/sheets");
-          let user = await usersAdapter.getUserByPhone(phone);
-          if (!user) user = await usersAdapter.createUser({ role: "customer", email: "", phone, passwordHash: "", name: `Customer ${phone.slice(-4)}`, isActive: true });
-          await usersAdapter.updateLastLogin(user.id);
-          return { id: user.id, email: user.email || undefined, name: user.name, role: user.role, phone: user.phone };
+          if (!SHEETS_AVAILABLE) return { id: `cust_demo_${phone.slice(-4)}`, name: `Customer ${phone.slice(-4)}`, role: "customer", phone };
+          const { customersAdapter } = await import("@/lib/sheets");
+          let customer = await customersAdapter.getCustomerByPhone(phone);
+          if (!customer) customer = await customersAdapter.createCustomer({ name: `Customer ${phone.slice(-4)}`, phone, email: "", address: "", notes: "", isActive: true });
+          return { id: customer.id, name: customer.name, role: "customer", phone: customer.phone };
         } catch { return null; }
       },
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
-      if (user) { token.role = (user as { role: string }).role; token.phone = (user as { phone?: string }).phone; }
-      return token;
-    },
-    session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.sub ?? "";
-        (session.user as { role: string }).role = token.role as string;
-        (session.user as { phone?: string }).phone = token.phone as string | undefined;
-      }
-      return session;
-    },
+    jwt({ token, user }) { if (user) { token.role = (user as { role: string }).role; token.phone = (user as { phone?: string }).phone; } return token; },
+    session({ session, token }) { if (session.user) { session.user.id = token.sub ?? ""; (session.user as { role: string }).role = token.role as string; (session.user as { phone?: string }).phone = token.phone as string | undefined; } return session; },
   },
 });
