@@ -7,7 +7,6 @@ export async function GET() {
   try {
     if (!SHEETS_AVAILABLE) return NextResponse.json({ success: true, data: MOCK_CATEGORIES } satisfies ApiResponse<Category[]>);
     const { categoriesAdapter } = await import("@/lib/sheets");
-    const categories = await categoriesAdapter.getAllCategories();
-    return NextResponse.json({ success: true, data: categories } satisfies ApiResponse<Category[]>);
-  } catch { return NextResponse.json({ success: false, error: "Failed to fetch categories" } satisfies ApiResponse<never>, { status: 500 }); }
+    return NextResponse.json({ success: true, data: await categoriesAdapter.getAllCategories() } satisfies ApiResponse<Category[]>);
+  } catch { return NextResponse.json({ success: false, error: "Failed" }, { status: 500 }); }
 }
