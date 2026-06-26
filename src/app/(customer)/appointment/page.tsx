@@ -1,7 +1,7 @@
 "use client";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CalendarCheck, Phone } from "lucide-react";
+import { CalendarCheck, Phone, MapPin, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -59,7 +59,7 @@ function AppointmentContent() {
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <Card><CardContent className="p-4 space-y-3">
-          <div className="space-y-1"><label className="text-xs font-medium text-gray-600">Your Name *</label><Input placeholder="Priya Sharma" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required /></div>
+          <div className="space-y-1"><label className="text-xs font-medium text-gray-600">Your Name *</label><Input placeholder="Rajeev Kumar" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required /></div>
           <div className="space-y-1"><label className="text-xs font-medium text-gray-600">Phone Number *</label><div className="relative"><Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><Input placeholder="+91 98765 43210" type="tel" className="pl-9" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} required /></div></div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1"><label className="text-xs font-medium text-gray-600">Date *</label><Input type="date" value={form.date} min={new Date().toISOString().split("T")[0]} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} required /></div>
@@ -70,11 +70,13 @@ function AppointmentContent() {
               </select>
             </div>
           </div>
-          <div className="space-y-1"><label className="text-xs font-medium text-gray-600">Special Requests</label><Input placeholder="e.g. Looking for bridal lehenga, budget ₹30,000" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} /></div>
+          <div className="space-y-1"><label className="text-xs font-medium text-gray-600">Special Requests</label><Input placeholder="e.g. Bridal lehenga, budget \u20b930,000" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} /></div>
         </CardContent></Card>
-        <div className="rounded-xl bg-brand-cream border border-brand-border p-3 text-xs text-brand-text-muted">
-          <p className="font-medium text-brand-text mb-1">📍 Visit Info</p>
-          <p>Main Market, City · Mon–Sat 10am–8pm · +91 98765 43210</p>
+        <div className="rounded-xl bg-brand-cream border border-brand-border p-4 space-y-1 text-sm">
+          <p className="font-semibold text-brand-text flex items-center gap-1.5"><MapPin size={14} /> Aditya Textile</p>
+          <p className="text-brand-text-muted">Manpur Patwatoli, PO Buniadganj</p>
+          <p className="text-brand-text-muted">Gaya - 823003, Bihar</p>
+          <p className="text-brand-text-muted flex items-center gap-1.5 mt-1"><Clock size={12} /> Mon–Sat, 10am–8pm</p>
         </div>
         <Button type="submit" className="w-full gap-2" size="lg"><CalendarCheck size={18} /> Request Appointment</Button>
       </form>

@@ -28,10 +28,10 @@ export default function HomePage() {
           </motion.div>
         </section>
         <section className="bg-brand-cream px-6 py-3 border-b border-brand-border">
-          <div className="flex items-center justify-around gap-4 text-xs text-brand-text-muted">
+          <div className="flex items-center justify-around gap-4 text-xs text-brand-text-muted flex-wrap">
             <div className="flex items-center gap-1"><Clock size={12} /> Mon–Sat 10am–8pm</div>
-            <div className="flex items-center gap-1"><Phone size={12} /> +91 98765 43210</div>
-            <div className="flex items-center gap-1"><MapPin size={12} /> Main Market</div>
+            <div className="flex items-center gap-1"><Phone size={12} /> +91 97xxx xxxxx</div>
+            <div className="flex items-center gap-1"><MapPin size={12} /> Manpur Patwatoli, Gaya</div>
           </div>
         </section>
         <section className="px-4 py-6 space-y-4">
@@ -53,14 +53,21 @@ export default function HomePage() {
         <section className="mx-4 mb-6 rounded-2xl bg-gradient-to-br from-brand-wine/5 to-brand-gold/5 border border-brand-border p-5">
           <h2 className="font-display text-base font-bold text-brand-text mb-4">How to Shop With Us</h2>
           <div className="space-y-3">
-            {[{step:"1",title:"Browse Our Collection",desc:"Explore sarees, lehengas, kurtis and more"},{step:"2",title:"Select Products",desc:"Mark items you want to see in our showroom"},{step:"3",title:"Book Your Visit",desc:"Choose a convenient date and time"},{step:"4",title:"We Prepare Everything",desc:"All items will be ready when you arrive"}].map((s) => (
+            {[
+              { step: "1", title: "Browse Our Collection", desc: "Explore sarees, lehengas, kurtis and more" },
+              { step: "2", title: "Select Products", desc: "Mark items you want to see in our showroom" },
+              { step: "3", title: "Book Your Visit", desc: "Choose a convenient date and time" },
+              { step: "4", title: "We Prepare Everything", desc: "All items will be ready when you arrive" },
+            ].map((s) => (
               <div key={s.step} className="flex items-start gap-3">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-wine text-white text-xs font-bold">{s.step}</div>
                 <div><p className="text-sm font-semibold text-brand-text">{s.title}</p><p className="text-xs text-brand-text-muted">{s.desc}</p></div>
               </div>
             ))}
           </div>
-          <Link href="/appointment" className="mt-4 block"><Button className="w-full gap-2"><CalendarPlus size={16} /> Book Your Visit Now</Button></Link>
+          <Link href="/appointment" className="mt-4 block">
+            <Button className="w-full gap-2"><CalendarPlus size={16} /> Book Your Visit Now</Button>
+          </Link>
         </section>
       </main>
       <BottomNav />
