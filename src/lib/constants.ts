@@ -1,52 +1,34 @@
-export const APP_CONFIG = {
-  name: "Aditya Textile",
-  tagline: "Art of Ethnic",
-  description: "Premium ethnic clothing — Sarees, Lehengas, Kurtis & more",
-  url: "https://adityatextile.vercel.app",
-  locale: "en-IN",
-} as const;
+export const APP_CONFIG = { name: "Aditya Textile", nameHi: "आदित्य टेक्सटाइल", tagline: "Art of Ethnic", taglineHi: "एथनिक की कला", description: "Premium Ethnic Textile Showroom — Retail Management Platform", url: "https://adityatextile.vercel.app", locale: "en-IN" } as const;
 
-export const BRAND_COLORS = {
-  wine: "#6B1D3A", wineLight: "#8A2E50", wineDark: "#4E1229",
-  gold: "#C8963B", goldLight: "#D4A94F", goldMuted: "#B8892F",
-  ivory: "#FDF8F0", cream: "#F5EDE3", rose: "#F5E6EC",
-  emerald: "#1A5E4B", emeraldLight: "#E8F5F0",
-  text: "#1C1017", textMuted: "#6B5A61", textLight: "#9B8A91",
-} as const;
-
-export const CATEGORIES = [
-  { slug: "sarees", name: "Sarees", nameHi: "साड़ियाँ", icon: "🥻" },
-  { slug: "lehengas", name: "Lehengas", nameHi: "लहंगे", icon: "👗" },
-  { slug: "kids-wear", name: "Kids Wear", nameHi: "बच्चों के कपड़े", icon: "👶" },
-  { slug: "salwar-suits", name: "Salwar Suits", nameHi: "सलवार सूट", icon: "👘" },
-  { slug: "kurtis", name: "Kurtis", nameHi: "कुर्तियाँ", icon: "👚" },
-  { slug: "dupattas", name: "Dupattas", nameHi: "दुपट्टे", icon: "🧣" },
-  { slug: "festive", name: "Festive Collection", nameHi: "त्योहार संग्रह", icon: "✨" },
+export const APPOINTMENT_STATUSES = [
+  { value: "pending",    label: "Pending",    labelHi: "लंबित",            color: "bg-gray-100 text-gray-700",    dot: "bg-gray-400" },
+  { value: "confirmed",  label: "Confirmed",  labelHi: "पुष्टि की गई",     color: "bg-blue-100 text-blue-700",   dot: "bg-blue-500" },
+  { value: "preparing",  label: "Preparing",  labelHi: "तैयार हो रहा है",    color: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
+  { value: "ready",      label: "Ready",      labelHi: "तैयार है",           color: "bg-green-100 text-green-700", dot: "bg-green-500" },
+  { value: "arrived",    label: "Arrived",    labelHi: "पहुंच गए",          color: "bg-purple-100 text-purple-700", dot: "bg-purple-500" },
+  { value: "trial",      label: "Trial",      labelHi: "ट्रायल",             color: "bg-pink-100 text-pink-700",   dot: "bg-pink-500" },
+  { value: "purchased",  label: "Purchased",  labelHi: "खरीद लिया",         color: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
+  { value: "closed",     label: "Closed",     labelHi: "बंद",               color: "bg-gray-100 text-gray-500",   dot: "bg-gray-300" },
+  { value: "cancelled",  label: "Cancelled",  labelHi: "रद्द",              color: "bg-red-100 text-red-700",     dot: "bg-red-500" },
 ] as const;
 
-export const FESTIVALS = {
-  diwali: { name: "Diwali", nameHi: "दिवाली", months: [10, 11], color: "#FF9933" },
-  eid: { name: "Eid", nameHi: "ईद", months: [3, 4, 6, 7], color: "#006400" },
-  wedding_season: { name: "Wedding Season", nameHi: "शादी का मौसम", months: [11, 12, 1, 2], color: "#B8860B" },
-  pongal: { name: "Pongal", nameHi: "पोंगल", months: [1], color: "#FF6347" },
-  onam: { name: "Onam", nameHi: "ओणम", months: [8, 9], color: "#FFD700" },
-  christmas: { name: "Christmas", nameHi: "क्रिसमस", months: [12], color: "#C41E3A" },
-  navratri: { name: "Navratri", nameHi: "नवरात्रि", months: [3, 4, 9, 10], color: "#FF4500" },
-  holi: { name: "Holi", nameHi: "होली", months: [3], color: "#FF69B4" },
-  raksha_bandhan: { name: "Raksha Bandhan", nameHi: "रक्षा बंधन", months: [8], color: "#9370DB" },
-  karwa_chauth: { name: "Karwa Chauth", nameHi: "करवा चौथ", months: [10], color: "#DC143C" },
-} as const;
+export const TIME_SLOTS = ["10:00","10:30","11:00","11:30","12:00","12:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30"] as const;
+export const PRODUCT_FABRICS = ["Pure Silk","Chanderi Silk","Banarasi Silk","Kanjivaram Silk","Cotton","Chanderi Cotton","Linen","Georgette","Chiffon","Net","Velvet","Crepe","Satin","Tussar","Organza"] as const;
+export const PRODUCT_OCCASIONS = ["Wedding","Bridal","Festive","Party","Casual","Office","Daily","Navratri","Diwali","Eid","Puja"] as const;
+export const STOCK_LOW_THRESHOLD = 5;
+export const STOCK_CRITICAL_THRESHOLD = 2;
 
-export const LOYALTY = { pointsPerHundredRupees: 1, minRedeemablePoints: 100, pointValueInRupees: 1 } as const;
-export const RESERVATION = {
-  maxDaysInAdvance: 14, expiryHours: 48,
-  timeSlots: ["10:00","10:30","11:00","11:30","12:00","12:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30"],
-} as const;
-export const STOCK_THRESHOLDS = { low: 3, out: 0 } as const;
-export const NAV_ITEMS = [
+export const OWNER_NAV = [
+  { href: "/dashboard", label: "Dashboard", labelHi: "डैशबोर्ड", icon: "LayoutDashboard" },
+  { href: "/dashboard/products", label: "Products", labelHi: "उत्पाद", icon: "Package" },
+  { href: "/dashboard/appointments", label: "Appointments", labelHi: "अपॉइंटमेंट", icon: "CalendarCheck" },
+  { href: "/dashboard/customers", label: "Customers", labelHi: "ग्राहक", icon: "Users" },
+  { href: "/dashboard/inventory", label: "Inventory", labelHi: "इन्वेंटरी", icon: "BarChart3" },
+] as const;
+
+export const CUSTOMER_NAV = [
   { href: "/", label: "Home", labelHi: "होम", icon: "Home" },
-  { href: "/categories", label: "Categories", labelHi: "श्रेणियाँ", icon: "Grid3x3" },
-  { href: "/wishlist", label: "Wishlist", labelHi: "पसंद", icon: "Heart" },
-  { href: "/reservations", label: "Reservations", labelHi: "आरक्षण", icon: "CalendarCheck" },
-  { href: "/profile", label: "Profile", labelHi: "प्रोफ़ाइल", icon: "User" },
+  { href: "/browse", label: "Products", labelHi: "उत्पाद", icon: "Grid3x3" },
+  { href: "/appointment", label: "Book Visit", labelHi: "विज़िट बुक करें", icon: "CalendarPlus" },
+  { href: "/my-appointments", label: "My Visits", labelHi: "मेरे विज़िट", icon: "CalendarCheck" },
 ] as const;

@@ -1,71 +1,72 @@
 import { z } from "zod";
 
-const isoDateString = z.string().datetime({ offset: true }).or(z.string().datetime());
-const boolString = z.string().transform((v) => v.toLowerCase() === "true").or(z.boolean());
-const numString = z.string().transform((v) => Number(v)).pipe(z.number()).or(z.number());
-const optionalString = z.string().optional().default("");
-const csvString = z.string().transform((v) => (v ? v.split(",").map((s) => s.trim()) : [])).or(z.array(z.string()));
+const isoDate = z.string().datetime({ offset: true }).or(z.string().datetime());
+const bool = z.string().transform((v) => v.toLowerCase() === "true").or(z.boolean());
+const num = z.string().transform((v) => Number(v)).pipe(z.number()).or(z.number());
+const opt = z.string().optional().default("");
+const csv = z.string().transform((v) => v ? v.split(",").map((s) => s.trim()).filter(Boolean) : []).or(z.array(z.string()));
 
-export const UserSchema = z.object({ id: z.string().min(1), role: z.enum(["owner", "customer"]), email: z.string().email().or(z.literal("")), phone: z.string(), passwordHash: z.string(), name: z.string().min(1), createdAt: isoDateString, lastLoginAt: isoDateString, isActive: boolString });
-export type User = z.infer<typeof UserSchema>;
-export const CreateUserSchema = UserSchema.omit({ id: true, createdAt: true, lastLoginAt: true }).extend({ password: z.string().min(8).optional() });
-export type CreateUser = z.infer<typeof CreateUserSchema>;
-
-export const CategorySchema = z.object({ id: z.string().min(1), name: z.string().min(1), slug: z.string().min(1), parentId: optionalString, displayOrder: numString, iconUrl: optionalString, isActive: boolString });
-export type Category = z.infer<typeof CategorySchema>;
-
-export const ProductSchema = z.object({ id: z.string().min(1), title: z.string().min(1), slug: z.string().min(1), categoryId: z.string().min(1), description: z.string(), fabric: z.string(), occasion: csvString, basePrice: numString, discountPct: numString, finalPrice: numString, tags: csvString, isNewArrival: boolString, isTrending: boolString, isActive: boolString, createdAt: isoDateString, updatedAt: isoDateString });
+export const ProductSchema = z.object({ id: z.string().min(1), name: z.string().min(1), sku: z.string(), barcode: opt, categoryId: z.string(), brand: opt, fabric: opt, colors: csv, pattern: opt, occasions: csv, sizes: csv, purchasePrice: num, sellingPrice: num, discountPct: num, finalPrice: num, stockTotal: num, stockReserved: num, stockAvailable: num, imageUrls: csv, description: opt, notes: opt, rackLocation: opt, tags: csv, isActive: bool, isFeatured: bool, createdAt: isoDate, updatedAt: isoDate });
 export type Product = z.infer<typeof ProductSchema>;
-export const CreateProductSchema = ProductSchema.omit({ id: true, createdAt: true, updatedAt: true, finalPrice: true });
+export const CreateProductSchema = ProductSchema.omit({ id: true, createdAt: true, updatedAt: true, stockReserved: true, stockAvailable: true, finalPrice: true });
 export type CreateProduct = z.infer<typeof CreateProductSchema>;
 
-export const ProductImageSchema = z.object({ id: z.string().min(1), productId: z.string().min(1), cloudinaryUrl: z.string().url(), displayOrder: numString, isPrimary: boolString });
-export type ProductImage = z.infer<typeof ProductImageSchema>;
+export const CategorySchema = z.object({ id: z.string().min(1), name: z.string().min(1), nameHi: opt, slug: z.string().min(1), parentId: opt, displayOrder: num, icon: opt, isActive: bool });
+export type Category = z.infer<typeof CategorySchema>;
 
-export const ProductVariantSchema = z.object({ id: z.string().min(1), productId: z.string().min(1), size: z.string(), color: z.string(), sku: z.string(), stock: numString, priceOverride: numString.optional() });
-export type ProductVariant = z.infer<typeof ProductVariantSchema>;
+export const CustomerSchema = z.object({ id: z.string().min(1), name: z.string().min(1), phone: z.string(), email: opt, address: opt, notes: opt, loyaltyPoints: num, totalVisits: num, isActive: bool, createdAt: isoDate, lastVisitAt: opt });
+export type Customer = z.infer<typeof CustomerSchema>;
 
-export const WishlistSchema = z.object({ id: z.string().min(1), customerId: z.string().min(1), productId: z.string().min(1), addedAt: isoDateString });
-export type Wishlist = z.infer<typeof WishlistSchema>;
+export const StaffSchema = z.object({ id: z.string().min(1), name: z.string().min(1), phone: z.string(), email: opt, role: z.enum(["owner", "staff"]), passwordHash: z.string(), isActive: bool, createdAt: isoDate });
+export type Staff = z.infer<typeof StaffSchema>;
 
-export const CartSchema = z.object({ id: z.string().min(1), customerId: z.string().min(1), productVariantId: z.string().min(1), quantity: numString, addedAt: isoDateString });
-export type Cart = z.infer<typeof CartSchema>;
+export const AppointmentStatusSchema = z.enum(["pending","confirmed","preparing","ready","arrived","trial","purchased","closed","cancelled"]);
+export type AppointmentStatus = z.infer<typeof AppointmentStatusSchema>;
 
-export const ReservationSchema = z.object({ id: z.string().min(1), customerId: z.string().min(1), productVariantId: z.string().min(1), visitDate: z.string(), visitTime: z.string(), status: z.enum(["pending","confirmed","ready","completed","cancelled","expired"]), notes: optionalString, createdAt: isoDateString, expiresAt: isoDateString });
-export type Reservation = z.infer<typeof ReservationSchema>;
-export const CreateReservationSchema = ReservationSchema.omit({ id: true, status: true, createdAt: true, expiresAt: true });
-export type CreateReservation = z.infer<typeof CreateReservationSchema>;
+export const AppointmentSchema = z.object({ id: z.string().min(1), customerId: z.string(), customerName: z.string(), customerPhone: z.string(), date: z.string(), time: z.string(), status: AppointmentStatusSchema, assignedStaffId: opt, notes: opt, totalItems: num, createdAt: isoDate, updatedAt: isoDate });
+export type Appointment = z.infer<typeof AppointmentSchema>;
+export const CreateAppointmentSchema = AppointmentSchema.omit({ id: true, status: true, createdAt: true, updatedAt: true, totalItems: true });
+export type CreateAppointment = z.infer<typeof CreateAppointmentSchema>;
 
-export const ReviewSchema = z.object({ id: z.string().min(1), customerId: z.string().min(1), productId: z.string().min(1), rating: numString.pipe(z.number().min(1).max(5)), text: z.string(), photoUrls: csvString, createdAt: isoDateString, isApproved: boolString });
-export type Review = z.infer<typeof ReviewSchema>;
+export const AppointmentItemSchema = z.object({ id: z.string().min(1), appointmentId: z.string().min(1), productId: z.string(), productName: z.string(), productSku: opt, quantity: num, notes: opt, isPrepared: bool });
+export type AppointmentItem = z.infer<typeof AppointmentItemSchema>;
 
-export const NotificationSchema = z.object({ id: z.string().min(1), customerId: z.string().min(1), type: z.enum(["reservation_confirmed","reservation_ready","reservation_expired","price_drop","restock","new_arrival","festive_launch","loyalty_reward"]), title: z.string(), body: z.string(), payload: z.string(), sentAt: isoDateString, readAt: isoDateString.or(z.literal("")), channel: z.enum(["push","whatsapp","email"]) });
+export const InventoryMovementSchema = z.object({ id: z.string().min(1), productId: z.string().min(1), type: z.enum(["in","out","reserved","released","adjustment"]), quantity: num, reason: opt, reference: opt, staffId: opt, createdAt: isoDate });
+export type InventoryMovement = z.infer<typeof InventoryMovementSchema>;
+
+export const TaskSchema = z.object({ id: z.string().min(1), appointmentId: z.string().min(1), appointmentItemId: opt, assignedStaffId: z.string(), title: z.string(), status: z.enum(["pending","in_progress","done"]), dueAt: opt, completedAt: opt, notes: opt, createdAt: isoDate });
+export type Task = z.infer<typeof TaskSchema>;
+
+export const NotificationSchema = z.object({ id: z.string().min(1), recipientId: z.string(), recipientType: z.enum(["staff","customer"]), type: z.enum(["appointment_confirmed","appointment_reminder","low_stock","task_assigned","product_ready"]), title: z.string(), body: z.string(), channel: z.enum(["push","whatsapp","sms","email"]), sentAt: isoDate, readAt: opt });
 export type Notification = z.infer<typeof NotificationSchema>;
 
-export const LoyaltyLedgerSchema = z.object({ id: z.string().min(1), customerId: z.string().min(1), points: numString, reason: z.string(), balance: numString, createdAt: isoDateString });
-export type LoyaltyLedger = z.infer<typeof LoyaltyLedgerSchema>;
+export const SettingSchema = z.object({ key: z.string().min(1), value: z.string(), label: opt, updatedAt: isoDate });
+export type Setting = z.infer<typeof SettingSchema>;
 
-export const FamilySizeSchema = z.object({ id: z.string().min(1), customerId: z.string().min(1), memberLabel: z.string(), gender: z.enum(["male","female","kids_boy","kids_girl"]), ageGroup: z.enum(["adult","teen","child","toddler"]), measurements: z.string() });
-export type FamilySize = z.infer<typeof FamilySizeSchema>;
+export const FestiveCollectionSchema = z.object({ id: z.string().min(1), name: z.string(), nameHi: opt, startDate: z.string(), endDate: z.string(), productIds: csv, isActive: bool, bannerColor: opt });
+export type FestiveCollection = z.infer<typeof FestiveCollectionSchema>;
 
-export const AuditLogSchema = z.object({ id: z.string().min(1), actorId: z.string().min(1), action: z.string(), entity: z.string(), entityId: z.string(), diff: z.string(), timestamp: isoDateString });
+export const PriceHistorySchema = z.object({ id: z.string().min(1), productId: z.string().min(1), oldPrice: num, newPrice: num, changedBy: z.string(), reason: opt, changedAt: isoDate });
+export type PriceHistory = z.infer<typeof PriceHistorySchema>;
+
+export const AuditLogSchema = z.object({ id: z.string().min(1), actorId: z.string(), actorName: z.string(), action: z.string(), entity: z.string(), entityId: z.string(), diff: opt, timestamp: isoDate });
 export type AuditLog = z.infer<typeof AuditLogSchema>;
 
-export const SHEET_SCHEMAS = { Users: UserSchema, Categories: CategorySchema, Products: ProductSchema, ProductImages: ProductImageSchema, ProductVariants: ProductVariantSchema, Wishlists: WishlistSchema, Carts: CartSchema, Reservations: ReservationSchema, Reviews: ReviewSchema, Notifications: NotificationSchema, LoyaltyLedger: LoyaltyLedgerSchema, FamilySizes: FamilySizeSchema, AuditLog: AuditLogSchema } as const;
+export const SHEET_SCHEMAS = { Products: ProductSchema, Categories: CategorySchema, Customers: CustomerSchema, Staff: StaffSchema, Appointments: AppointmentSchema, AppointmentItems: AppointmentItemSchema, Inventory: InventoryMovementSchema, Tasks: TaskSchema, Notifications: NotificationSchema, Settings: SettingSchema, FestiveCollections: FestiveCollectionSchema, PriceHistory: PriceHistorySchema, AuditLog: AuditLogSchema } as const;
 export type SheetName = keyof typeof SHEET_SCHEMAS;
 
 export const SHEET_HEADERS: Record<SheetName, string[]> = {
-  Users: ["id","role","email","phone","passwordHash","name","createdAt","lastLoginAt","isActive"],
-  Categories: ["id","name","slug","parentId","displayOrder","iconUrl","isActive"],
-  Products: ["id","title","slug","categoryId","description","fabric","occasion","basePrice","discountPct","finalPrice","tags","isNewArrival","isTrending","isActive","createdAt","updatedAt"],
-  ProductImages: ["id","productId","cloudinaryUrl","displayOrder","isPrimary"],
-  ProductVariants: ["id","productId","size","color","sku","stock","priceOverride"],
-  Wishlists: ["id","customerId","productId","addedAt"],
-  Carts: ["id","customerId","productVariantId","quantity","addedAt"],
-  Reservations: ["id","customerId","productVariantId","visitDate","visitTime","status","notes","createdAt","expiresAt"],
-  Reviews: ["id","customerId","productId","rating","text","photoUrls","createdAt","isApproved"],
-  Notifications: ["id","customerId","type","title","body","payload","sentAt","readAt","channel"],
-  LoyaltyLedger: ["id","customerId","points","reason","balance","createdAt"],
-  FamilySizes: ["id","customerId","memberLabel","gender","ageGroup","measurements"],
-  AuditLog: ["id","actorId","action","entity","entityId","diff","timestamp"],
+  Products: ["id","name","sku","barcode","categoryId","brand","fabric","colors","pattern","occasions","sizes","purchasePrice","sellingPrice","discountPct","finalPrice","stockTotal","stockReserved","stockAvailable","imageUrls","description","notes","rackLocation","tags","isActive","isFeatured","createdAt","updatedAt"],
+  Categories: ["id","name","nameHi","slug","parentId","displayOrder","icon","isActive"],
+  Customers: ["id","name","phone","email","address","notes","loyaltyPoints","totalVisits","isActive","createdAt","lastVisitAt"],
+  Staff: ["id","name","phone","email","role","passwordHash","isActive","createdAt"],
+  Appointments: ["id","customerId","customerName","customerPhone","date","time","status","assignedStaffId","notes","totalItems","createdAt","updatedAt"],
+  AppointmentItems: ["id","appointmentId","productId","productName","productSku","quantity","notes","isPrepared"],
+  Inventory: ["id","productId","type","quantity","reason","reference","staffId","createdAt"],
+  Tasks: ["id","appointmentId","appointmentItemId","assignedStaffId","title","status","dueAt","completedAt","notes","createdAt"],
+  Notifications: ["id","recipientId","recipientType","type","title","body","channel","sentAt","readAt"],
+  Settings: ["key","value","label","updatedAt"],
+  FestiveCollections: ["id","name","nameHi","startDate","endDate","productIds","isActive","bannerColor"],
+  PriceHistory: ["id","productId","oldPrice","newPrice","changedBy","reason","changedAt"],
+  AuditLog: ["id","actorId","actorName","action","entity","entityId","diff","timestamp"],
 };
