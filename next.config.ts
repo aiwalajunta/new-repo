@@ -9,7 +9,6 @@ const withSerwist = withSerwistInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Keep googleapis and Node.js-only packages server-side only
   serverExternalPackages: [
     "googleapis",
     "google-auth-library",

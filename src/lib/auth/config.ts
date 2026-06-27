@@ -1,9 +1,11 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { compare } from "bcryptjs";
-import { SHEETS_AVAILABLE } from "@/lib/sheets/mock-data";
+
+// Hardcoded fallback secret so auth works even without NEXTAUTH_SECRET env var
+const SECRET = process.env.NEXTAUTH_SECRET ?? "aditya-textile-nextauth-secret-2024-fallback";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: SECRET,
   session: { strategy: "jwt" },
   pages: { signIn: "/login", error: "/login" },
   providers: [
@@ -18,19 +20,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null;
         const email = credentials.email as string;
         const password = credentials.password as string;
-        try {
-          if (!SHEETS_AVAILABLE) {
-            if (email === "owner@adityatextile.com" && password === "owner123") {
-              return { id: "staff_owner_demo", email, name: "Aditya (Owner)", role: "owner" };
-            }
-            if (email === "staff@adityatextile.com" && password === "staff123") {
-              return { id: "staff_001_demo", email, name: "Ravi (Staff)", role: "staff" };
-            }
-            return null;
-          }
-          // TODO: query Staff sheet when SHEETS_AVAILABLE
-          return null;
-        } catch { return null; }
+        // Demo credentials — replace with DB lookup when going live
+        if (email === "owner@adityatextile.com" && password === "owner123") {
+          return { id: "owner_001", email, name: "Aditya (Owner)", role: "owner" };
+        }
+        if (email === "staff@adityatextile.com" && password === "staff123") {
+          return { id: "staff_001", email, name: "Ravi (Staff)", role: "staff" };
+        }
+        return null;
       },
     }),
     CredentialsProvider({
@@ -42,15 +39,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.phone || !credentials?.otp) return null;
-        if ((credentials.otp as string) !== "123456") return null;
-        const phone = credentials.phone as string;
-        try {
-          if (!SHEETS_AVAILABLE) {
-            return { id: `cust_demo_${phone.slice(-4)}`, name: `Customer ${phone.slice(-4)}`, role: "customer", phone };
-          }
-          // TODO: find or create customer in Sheets when SHEETS_AVAILABLE
-          return null;
-        } catch { return null; }
+        // Demo: any phone + OTP 123456 works
+        if ((credentials.otp as string) === "123456") {
+          const phone = credentials.phone as string;
+          return { id: `cust_${phone.slice(-4)}`, name: `Customer ${phone.slice(-4)}`, role: "customer", phone };
+        }
+        return null;
       },
     }),
   ],
