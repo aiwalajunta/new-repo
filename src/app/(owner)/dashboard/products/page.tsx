@@ -17,6 +17,7 @@ import type { Product } from "@/lib/sheets/schemas";
 
 type Tab = "details" | "images" | "stock";
 type StockFilter = "all" | "low" | "out";
+interface ExtractedRow { name: string; brand: string; price: number; category: string; sku: string; notes: string; }
 
 const empty = (): Partial<Product> => ({ name:"",sku:"",barcode:"",categoryId:"",brand:"Aditya Textile",fabric:"",colors:[],pattern:"",occasions:[],sizes:[],purchasePrice:0,sellingPrice:0,discountPct:0,finalPrice:0,stockTotal:0,stockReserved:0,stockAvailable:0,imageUrls:[],description:"",notes:"",rackLocation:"",tags:[],isActive:true,isFeatured:false });
 const calcFinal = (sell: number, disc: number) => Math.round(sell * (1 - disc / 100));
@@ -51,39 +52,28 @@ function ProductFormDialog({ product, open, onClose, onSave }: { product: Partia
     finally { setUploading(false); }
   }, [form.imageUrls]);
 
-  // AI scan: upload photo, Claude Vision extracts product details
   const handleAiScan = async (file: File) => {
     setAiScanning(true);
-    toast({ title: "\ud83e\udd16 Scanning photo for product details...", variant: "default" });
+    toast({ title: "\ud83e\udd16 Scanning photo...", variant: "default" });
     try {
       const dataUrl = await fileToDataUrl(file);
       const base64 = dataUrl.split(",")[1];
-      const res = await fetch("/api/ai-scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: base64, currentForm: form }),
-      });
-      if (!res.ok) throw new Error("Scan failed");
+      const res = await fetch("/api/ai-scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: base64, currentForm: form }) });
+      if (!res.ok) throw new Error();
       const data = await res.json() as Partial<Product> & { confidence?: string };
-      // Merge AI fields into form, only filling empty fields
       const merged: Partial<Product> = { ...form };
-      const fields = ["name", "brand", "fabric", "colors", "pattern", "description", "occasions", "sizes"] as const;
-      for (const key of fields) {
-        const val = data[key as keyof typeof data];
-        const cur = merged[key as keyof Product];
-        const isEmpty = !cur || (Array.isArray(cur) ? cur.length === 0 : String(cur).trim() === "");
-        if (val && isEmpty) (merged as Record<string, unknown>)[key] = val;
+      for (const key of ["name", "brand", "fabric", "colors", "pattern", "description", "occasions", "sizes"] as const) {
+        const val = data[key as keyof typeof data]; const cur = merged[key as keyof Product];
+        if (val && (!cur || (Array.isArray(cur) ? cur.length === 0 : String(cur).trim() === ""))) (merged as Record<string, unknown>)[key] = val;
       }
       merged.imageUrls = [dataUrl, ...(form.imageUrls ?? [])];
-      setForm(merged);
-      setTab("details");
-      toast({ title: `\u2705 Details extracted! Review and save. ${data.confidence ?? ""}`, variant: "success" });
-    } catch {
-      toast({ title: "Could not extract details. Fill manually.", variant: "error" });
-    } finally { setAiScanning(false); }
+      setForm(merged); setTab("details");
+      toast({ title: `\u2705 Details extracted! ${data.confidence ?? ""}`, variant: "success" });
+    } catch { toast({ title: "Could not extract. Fill manually.", variant: "error" }); }
+    finally { setAiScanning(false); }
   };
 
-  const applyAdj = () => { const tot = Math.max(0, (form.stockTotal ?? 0) + stockAdj); set("stockTotal", tot); set("stockAvailable", Math.max(0, tot - (form.stockReserved ?? 0))); toast({ title: `Stock: ${form.stockTotal} \u2192 ${tot}`, variant: "success" }); setStockAdj(0); };
+  const applyAdj = () => { const tot = Math.max(0, (form.stockTotal ?? 0) + stockAdj); set("stockTotal", tot); set("stockAvailable", Math.max(0, tot - (form.stockReserved ?? 0))); toast({ title: `Stock \u2192 ${tot}`, variant: "success" }); setStockAdj(0); };
   const handleSave = () => {
     if (!form.name?.trim()) { toast({ title: "Product Name required", variant: "error" }); return; }
     if (!form.categoryId) { toast({ title: "Category required", variant: "error" }); return; }
@@ -94,13 +84,8 @@ function ProductFormDialog({ product, open, onClose, onSave }: { product: Partia
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[92vh] overflow-hidden flex flex-col gap-0 p-0">
-        <div className="px-6 pt-5 pb-3 border-b border-gray-100">
-          <DialogTitle className="font-display text-xl">{isEdit ? `Edit \u2014 ${form.name||"Product"}` : "Add New Product"}</DialogTitle>
-          <DialogDescription className="text-xs mt-0.5">{isEdit ? "Changes saved permanently \u2014 visible on all pages." : "Fill details to add to catalog."}</DialogDescription>
-        </div>
-        <div className="flex border-b border-gray-200 px-6 gap-1">
-          {(["details","images","stock"] as Tab[]).map((t) => (<button key={t} onClick={()=>setTab(t)} className={`pb-2.5 px-1 text-sm font-medium border-b-2 transition-colors mr-4 ${tab===t?"border-brand-wine text-brand-wine":"border-transparent text-gray-500 hover:text-gray-700"}`}>{t==="details"?"\ud83d\udccb Details":t==="images"?"\ud83d\uddbc\ufe0f Photos":"\ud83d\udce6 Stock"}</button>))}
-        </div>
+        <div className="px-6 pt-5 pb-3 border-b border-gray-100"><DialogTitle className="font-display text-xl">{isEdit ? `Edit \u2014 ${form.name||"Product"}` : "Add New Product"}</DialogTitle><DialogDescription className="text-xs mt-0.5">{isEdit ? "Saved permanently \u2014 visible on all pages." : "Fill details to add to catalog."}</DialogDescription></div>
+        <div className="flex border-b border-gray-200 px-6 gap-1">{(["details","images","stock"] as Tab[]).map((t) => (<button key={t} onClick={()=>setTab(t)} className={`pb-2.5 px-1 text-sm font-medium border-b-2 transition-colors mr-4 ${tab===t?"border-brand-wine text-brand-wine":"border-transparent text-gray-500 hover:text-gray-700"}`}>{t==="details"?"\ud83d\udccb Details":t==="images"?"\ud83d\uddbc\ufe0f Photos":"\ud83d\udce6 Stock"}</button>))}</div>
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {tab==="details" && (<div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 space-y-1"><label className="text-xs font-semibold text-gray-600">Product Name *</label><Input placeholder="Banarasi Silk Saree" value={form.name??""} onChange={(e)=>set("name",e.target.value)}/></div>
@@ -125,21 +110,15 @@ function ProductFormDialog({ product, open, onClose, onSave }: { product: Partia
             <div className="col-span-2 flex items-center gap-6 pt-1">{([["isActive","Active listing"],["isFeatured","Featured on home"]] as const).map(([k,label])=>(<label key={k} className="flex cursor-pointer items-center gap-2"><input type="checkbox" checked={!!form[k]} onChange={(e)=>set(k,e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-brand-wine focus:ring-brand-wine"/><span className="text-sm text-gray-700">{label}</span></label>))}</div>
           </div>)}
           {tab==="images" && (<div className="space-y-4">
-            {/* Bulk upload — no camera lock, pick multiple from gallery */}
             <div onDrop={(e)=>{e.preventDefault();setDragOver(false);handleImageUpload(Array.from(e.dataTransfer.files));}} onDragOver={(e)=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onClick={()=>fileRef.current?.click()} className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-8 cursor-pointer transition-colors ${dragOver?"border-brand-wine bg-brand-rose":"border-gray-200 hover:border-brand-wine hover:bg-gray-50"}`}>
-              {uploading?<><Sparkles size={20} className="animate-spin text-brand-wine"/><span className="text-sm text-brand-wine font-medium">Uploading photos...</span></>
-                :<><Upload size={32} className="text-gray-400"/><div className="text-center"><p className="text-sm font-semibold text-gray-700">Tap to upload photos</p><p className="text-xs text-gray-400 mt-0.5">Pick multiple from gallery \u00b7 drag & drop \u00b7 saved permanently</p></div></>}
+              {uploading?<><Sparkles size={20} className="animate-spin text-brand-wine"/><span className="text-sm font-medium text-brand-wine">Uploading...</span></>:<><Upload size={32} className="text-gray-400"/><div className="text-center"><p className="text-sm font-semibold text-gray-700">Tap to upload photos</p><p className="text-xs text-gray-400 mt-0.5">Pick multiple from gallery \u00b7 drag & drop</p></div></>}
             </div>
-            {/* No capture= attribute so user can choose camera OR gallery */}
             <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e)=>{if(e.target.files)handleImageUpload(Array.from(e.target.files));}}/>
-            {/* AI scan button */}
             <button type="button" onClick={()=>aiFileRef.current?.click()} disabled={aiScanning} className="flex items-center gap-2 text-xs text-brand-wine hover:underline mx-auto disabled:opacity-50">
-              <Sparkles size={13} className={aiScanning?"animate-spin":""}/>
-              {aiScanning ? "Scanning photo..." : "\ud83e\udd16 Scan product photo to auto-fill details (AI)"}
+              <Sparkles size={13} className={aiScanning?"animate-spin":""}/>{aiScanning?"Scanning...":"\ud83e\udd16 Scan photo to auto-fill details (AI)"}
             </button>
             <input ref={aiFileRef} type="file" accept="image/*" className="hidden" onChange={(e)=>{if(e.target.files?.[0])handleAiScan(e.target.files[0]);}}/>
-            {(form.imageUrls??[]).length===0
-              ?<div className="flex flex-col items-center gap-2 py-4 text-center"><ImageIcon size={32} className="text-gray-200"/><p className="text-sm text-gray-400">No photos yet.</p></div>
+            {(form.imageUrls??[]).length===0?<div className="flex flex-col items-center gap-2 py-4 text-center"><ImageIcon size={32} className="text-gray-200"/><p className="text-sm text-gray-400">No photos yet.</p></div>
               :<div className="grid grid-cols-3 gap-3">{(form.imageUrls??[]).map((url,i)=>(<div key={i} className="relative group aspect-[3/4] rounded-xl overflow-hidden border border-gray-200 bg-gray-50"><img src={url} alt={`Photo ${i+1}`} className="h-full w-full object-cover"/>{i===0&&<span className="absolute top-1.5 left-1.5 bg-brand-wine text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">PRIMARY</span>}<button onClick={(e)=>{e.stopPropagation();set("imageUrls",(form.imageUrls??[]).filter((_,j)=>j!==i));}} className="absolute top-1.5 right-1.5 h-6 w-6 flex items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button></div>))}</div>}
           </div>)}
           {tab==="stock" && (<div className="space-y-5">
@@ -151,6 +130,157 @@ function ProductFormDialog({ product, open, onClose, onSave }: { product: Partia
         <div className="flex gap-3 px-6 pb-5 pt-3 border-t border-gray-100">
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
           <Button className="flex-1 gap-2" onClick={handleSave}><CheckCircle size={16}/> {isEdit?"Save Changes":"Add Product"}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ─── Photo Price List Import ─────────────────────────── */
+function PhotoPriceListDialog({ open, onClose, onImport }: { open: boolean; onClose: () => void; onImport: (p: Partial<Product>[]) => void }) {
+  const [step, setStep] = useState<"upload" | "extracting" | "preview" | "done">("upload");
+  const [dragOver, setDragOver] = useState(false);
+  const [company, setCompany] = useState("");
+  const [category, setCategory] = useState("");
+  const [error, setError] = useState("");
+  const [editRows, setEditRows] = useState<ExtractedRow[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const reset = () => { setStep("upload"); setCompany(""); setCategory(""); setEditRows([]); setError(""); onClose(); };
+
+  const processImage = async (file: File) => {
+    if (!file.type.startsWith("image/")) { toast({ title: "Please upload an image file (JPG, PNG, screenshot)", variant: "error" }); return; }
+    setStep("extracting"); setError("");
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const base64 = dataUrl.split(",")[1];
+      const res = await fetch("/api/extract-pricelist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64, mediaType: file.type }),
+      });
+      const data = await res.json() as { company?: string; category?: string; products?: ExtractedRow[]; error?: string };
+      if (data.error && !data.products?.length) { setError(data.error); setStep("upload"); return; }
+      setCompany(data.company ?? "");
+      setCategory(data.category ?? "Sarees");
+      setEditRows((data.products ?? []).map(r => ({ ...r })));
+      if (data.error) setError(data.error);
+      setStep("preview");
+    } catch (e) { console.error(e); setError("Failed to process. Please try again."); setStep("upload"); }
+  };
+
+  const handleImport = () => {
+    const catObj = MOCK_CATEGORIES.find(c => c.name.toLowerCase().includes(category.toLowerCase()) || category.toLowerCase().includes(c.name.toLowerCase()));
+    const products: Partial<Product>[] = editRows.filter(r => r.name.trim() && r.price > 0).map((r, i) => ({
+      id: `photo_${Date.now()}_${i}`, name: r.name.trim(), brand: r.brand || company || "Aditya Textile",
+      sku: `${(company || "AT").slice(0,3).toUpperCase()}-${Date.now()}-${i}`,
+      categoryId: catObj?.id ?? "", sellingPrice: r.price, finalPrice: r.price,
+      purchasePrice: 0, discountPct: 0, stockTotal: 0, stockAvailable: 0, stockReserved: 0,
+      fabric: "", colors: [], sizes: [], pattern: "", occasions: [], imageUrls: [],
+      description: "", notes: r.notes || "", rackLocation: "", barcode: "", tags: [],
+      isActive: true, isFeatured: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    }));
+    onImport(products);
+    setStep("done");
+    toast({ title: `\u2705 ${products.length} products imported from price list!`, variant: "success" });
+  };
+
+  const updateRow = (i: number, field: keyof ExtractedRow, value: string | number) =>
+    setEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
+  const removeRow = (i: number) => setEditRows(prev => prev.filter((_, idx) => idx !== i));
+  const validCount = editRows.filter(r => r.name.trim() && r.price > 0).length;
+
+  return (
+    <Dialog open={open} onOpenChange={reset}>
+      <DialogContent className="max-w-2xl max-h-[92vh] flex flex-col overflow-hidden p-0">
+        <div className="px-6 pt-5 pb-3 border-b border-gray-100">
+          <DialogTitle className="flex items-center gap-2 font-display text-xl">\ud83d\udcf8 Import from Price List Photo</DialogTitle>
+          <DialogDescription className="text-xs mt-0.5">Upload any price list photo \u2014 AI extracts company, all product names and prices in one go</DialogDescription>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {step === "upload" && (<>
+            <div onDrop={(e)=>{e.preventDefault();setDragOver(false);if(e.dataTransfer.files[0])processImage(e.dataTransfer.files[0]);}} onDragOver={(e)=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onClick={()=>fileRef.current?.click()}
+              className={`flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed p-10 cursor-pointer transition-colors ${dragOver?"border-brand-wine bg-brand-rose":"border-gray-200 hover:border-brand-wine hover:bg-gray-50"}`}>
+              <div className="text-5xl">\ud83d\udcf8</div>
+              <div className="text-center"><p className="font-semibold text-gray-700">Upload price list photo</p><p className="text-xs text-gray-400 mt-1">Printed list \u00b7 screenshot \u00b7 WhatsApp image \u00b7 PDF screenshot</p></div>
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e)=>{if(e.target.files?.[0])processImage(e.target.files[0]);}}/>
+            {error && <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">{error}</div>}
+            <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 space-y-2">
+              <p className="text-sm font-semibold text-blue-800">\ud83d\udca1 How it works</p>
+              <div className="space-y-1 text-xs text-blue-700">
+                <p>\u2022 Upload any price list photo like the sample (company heading + product names + prices)</p>
+                <p>\u2022 AI reads the company name and extracts ALL rows in one go \u2014 even 50+ products</p>
+                <p>\u2022 Review and edit any row before importing (remove errors, fix prices)</p>
+                <p>\u2022 All products imported with prices \u2014 add photos and stock individually later</p>
+                <p className="text-blue-400 mt-1">\u26a0\ufe0f Requires ANTHROPIC_API_KEY in Vercel \u2192 Settings \u2192 Environment Variables</p>
+              </div>
+            </div>
+          </>)}
+
+          {step === "extracting" && (
+            <div className="flex flex-col items-center justify-center py-16 gap-5">
+              <div className="relative flex h-20 w-20 items-center justify-center">
+                <div className="absolute inset-0 rounded-full border-4 border-brand-wine border-t-transparent animate-spin" />
+                <span className="text-3xl">\ud83e\udd16</span>
+              </div>
+              <div className="text-center space-y-1">
+                <p className="font-semibold text-gray-800">Extracting price list...</p>
+                <p className="text-sm text-gray-500">AI is reading all product names and prices</p>
+                <p className="text-xs text-gray-400">Takes 5\u201315 seconds for large lists</p>
+              </div>
+            </div>
+          )}
+
+          {step === "preview" && (<div className="space-y-4">
+            {error && <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">{error}</div>}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1"><label className="text-xs font-semibold text-gray-600">Company / Supplier</label><Input value={company} onChange={(e)=>setCompany(e.target.value)} placeholder="Company name"/></div>
+              <div className="space-y-1"><label className="text-xs font-semibold text-gray-600">Category</label>
+                <select value={category} onChange={(e)=>setCategory(e.target.value)} className="flex h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-wine">
+                  {MOCK_CATEGORIES.map((c)=><option key={c.id} value={c.name}>{c.icon} {c.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-700">{editRows.length} rows extracted \u2014 edit or remove before importing:</p>
+              <span className="text-xs text-gray-400">Tap \u00d7 to remove</span>
+            </div>
+            <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+              <div className="grid grid-cols-[1fr_110px_36px] gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200">
+                <p className="text-[11px] font-semibold text-gray-500 uppercase">Product Name</p>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase text-right">Price (\u20b9)</p>
+                <span/>
+              </div>
+              <div className="max-h-72 overflow-y-auto divide-y divide-gray-100">
+                {editRows.map((row, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_110px_36px] gap-2 items-center px-3 py-1.5">
+                    <Input value={row.name} onChange={(e)=>updateRow(i,"name",e.target.value)} className="h-8 text-xs border-0 bg-transparent p-0 focus:ring-0 focus:border-b focus:border-brand-wine"/>
+                    <Input type="number" value={row.price||""} onChange={(e)=>updateRow(i,"price",Number(e.target.value))} className="h-8 text-xs text-right"/>
+                    <button onClick={()=>removeRow(i)} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"><X size={14}/></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={()=>setStep("upload")}>\u2190 Try Another</Button>
+              <Button className="flex-1 gap-2" style={{background:"#6B1D3A"}} onClick={handleImport} disabled={validCount===0}>
+                <CheckCircle size={15}/> Import {validCount} Products
+              </Button>
+            </div>
+          </div>)}
+
+          {step === "done" && (
+            <div className="flex flex-col items-center py-10 gap-4">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100"><CheckCircle size={40} className="text-green-600"/></div>
+              <div className="text-center"><p className="font-display text-xl font-bold text-gray-900">Price List Imported!</p><p className="text-sm text-gray-500 mt-1">{validCount} products added to catalog</p></div>
+              <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-xs text-blue-700 text-center max-w-xs">
+                \ud83d\udca1 Tap \u270f\ufe0f on any product to add stock, upload photos, and fill in more details.
+              </div>
+              <Button onClick={reset} className="mt-2">Done</Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -186,7 +316,7 @@ function ExcelImportDialog({ open, onClose, onImport }: { open:boolean; onClose:
         const purchasePrice = Number(get(["Purchase Price","Cost","Cost Price","Buy Price"])) || 0;
         const stock = Number(get(["Stock","Qty","Quantity","Available Stock"])) || 0;
         const discount = Number(get(["Discount","Discount %","Disc %","Discount Percent"])) || 0;
-        if (!name) { errs.push(`Row ${i+2}: Missing product name \u2014 skipped`); continue; }
+        if (!name) { errs.push(`Row ${i+2}: Missing name \u2014 skipped`); continue; }
         const catName = get(["Category","CATEGORY","Type"]).toLowerCase();
         const cat = MOCK_CATEGORIES.find((c) => c.name.toLowerCase().includes(catName) || catName.includes(c.name.toLowerCase()));
         const sku = get(["SKU","Code","Product Code","Item Code"]) || `SKU-${Date.now()}-${i}`;
@@ -197,7 +327,7 @@ function ExcelImportDialog({ open, onClose, onImport }: { open:boolean; onClose:
         products.push({ id:`imp_${Date.now()}_${i}`,name,brand:get(["Brand","Company","Brand Name","Manufacturer"])||"Aditya Textile",sku,barcode,categoryId:cat?.id??"",fabric:get(["Fabric","Material","Fabric Type","Cloth"]),colors:get(["Colors","Color","Colours","Colour"]).split(",").map((s)=>s.trim()).filter(Boolean),sizes:get(["Sizes","Size","Available Sizes"]).split(",").map((s)=>s.trim()).filter(Boolean),rackLocation:get(["Rack","Rack Location","Shelf","Location","Rack No"]),notes:get(["Remarks","Notes","Comment","Remark"]),description:get(["Description","Details","Product Description"]),pattern:get(["Pattern","Design","Work","Embroidery"]),occasions:get(["Occasions","Occasion"]).split(",").map((s)=>s.trim()).filter(Boolean),tags:get(["Tags","Keywords"]).split(",").map((s)=>s.trim()).filter(Boolean),sellingPrice:price,purchasePrice,discountPct:discount,finalPrice:finalPrice||price,stockTotal:stock,stockAvailable:stock,stockReserved:0,imageUrls,isActive:true,isFeatured:get(["Featured","Is Featured"]).toLowerCase()==="yes",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString() });
       }
       setParsed(products); setErrors(errs); setStep("preview");
-    } catch (err) { console.error(err); toast({ title: "Failed to read file. Ensure valid .xlsx or .csv", variant: "error" }); }
+    } catch (err) { console.error(err); toast({ title: "Failed to read file", variant: "error" }); }
     finally { setLoading(false); }
   };
 
@@ -207,26 +337,25 @@ function ExcelImportDialog({ open, onClose, onImport }: { open:boolean; onClose:
   return (
     <Dialog open={open} onOpenChange={reset}>
       <DialogContent className="max-w-2xl max-h-[88vh] flex flex-col overflow-hidden p-0">
-        <div className="px-6 pt-5 pb-3 border-b border-gray-100"><DialogTitle className="flex items-center gap-2"><FileSpreadsheet size={20} className="text-green-600"/> Import from Excel / CSV</DialogTitle><DialogDescription className="text-xs mt-0.5">All fields imported. Photos via URL column or upload after. Owner can edit any field.</DialogDescription></div>
+        <div className="px-6 pt-5 pb-3 border-b border-gray-100"><DialogTitle className="flex items-center gap-2"><FileSpreadsheet size={20} className="text-green-600"/> Import from Excel / CSV</DialogTitle><DialogDescription className="text-xs mt-0.5">All 17 fields imported. Photos via URL column or upload after.</DialogDescription></div>
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
           {step==="upload" && (<>
             <div onDrop={(e)=>{e.preventDefault();setDragOver(false);if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0]);}} onDragOver={(e)=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onClick={()=>fileRef.current?.click()} className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-10 cursor-pointer transition-colors ${dragOver?"border-green-500 bg-green-50":"border-gray-200 hover:border-green-400 hover:bg-gray-50"}`}>
-              {loading?<><FileSpreadsheet size={36} className="text-green-500 animate-pulse"/><p className="text-sm text-gray-600">Reading file...</p></>:<><FileSpreadsheet size={40} className="text-green-500"/><div className="text-center"><p className="font-semibold text-gray-700">Drop .xlsx or .csv here</p><p className="text-xs text-gray-400 mt-1">All 17 product fields supported</p></div></>}
+              {loading?<><FileSpreadsheet size={36} className="text-green-500 animate-pulse"/><p className="text-sm text-gray-600">Reading...</p></>:<><FileSpreadsheet size={40} className="text-green-500"/><div className="text-center"><p className="font-semibold text-gray-700">Drop .xlsx or .csv here</p><p className="text-xs text-gray-400 mt-1">All product fields supported</p></div></>}
             </div>
             <input ref={fileRef} type="file" accept=".xlsx,.csv" className="hidden" onChange={(e)=>{if(e.target.files?.[0])processFile(e.target.files[0]);}}/>
             <div className="rounded-xl border border-green-200 bg-green-50 p-4 space-y-3">
-              <p className="text-sm font-semibold text-green-800">\ud83d\udce5 Full Template \u2014 all fields supported</p>
-              <p className="text-xs text-green-700">* = required. Add <strong>Image URL</strong> column for photos. Owner can edit any field after import.</p>
+              <p className="text-sm font-semibold text-green-800">\ud83d\udce5 Template columns</p>
               <div className="overflow-x-auto rounded-lg border border-green-200"><table className="text-[10px] border-collapse w-full"><thead><tr className="bg-green-100">{COLS.map((c)=><th key={c} className="border border-green-200 px-2 py-1.5 text-left text-green-800 font-semibold whitespace-nowrap">{c}</th>)}</tr></thead><tbody>{SAMPLE.map((row,i)=><tr key={i} className={i%2===0?"bg-white":"bg-green-50/40"}>{row.map((cell,j)=><td key={j} className="border border-green-200 px-2 py-1 text-gray-600 whitespace-nowrap">{cell}</td>)}</tr>)}</tbody></table></div>
             </div>
           </>)}
           {step==="preview" && (<div className="space-y-4">
-            <div className="flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-200 p-3"><CheckCircle size={15} className="text-blue-600 shrink-0"/><p className="text-xs text-blue-700"><strong>{parsed.length} products</strong> ready{errors.length>0&&`, ${errors.length} skipped`}. Owner can edit any product after.</p></div>
-            {errors.length>0&&<div className="rounded-xl bg-amber-50 border border-amber-200 p-3 space-y-1"><p className="text-xs font-semibold text-amber-800">\u26a0\ufe0f Skipped:</p>{errors.map((e,i)=><p key={i} className="text-xs text-amber-700">{e}</p>)}</div>}
-            <div className="space-y-2 max-h-64 overflow-y-auto">{parsed.map((p,i)=>(<div key={i} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3"><span>\u2705</span><div className="flex-1 min-w-0"><p className="text-sm font-medium text-gray-800 truncate">{p.name}</p><p className="text-xs text-gray-400">{p.brand} \u00b7 {getCatName(p.categoryId??"")} \u00b7 {formatPrice(p.finalPrice??0)} \u00b7 Stock: {p.stockTotal}{(p.imageUrls??[]).length>0&&" \u00b7 \ud83d\uddbc\ufe0f Photo"}</p></div></div>))}</div>
-            <div className="flex gap-3 pt-2"><Button variant="outline" className="flex-1" onClick={()=>setStep("upload")}>\u2190 Back</Button><Button className="flex-1 bg-green-600 hover:bg-green-700 gap-2" onClick={handleImport} disabled={parsed.length===0}><CheckCircle size={15}/> Import {parsed.length} Products</Button></div>
+            <div className="flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-200 p-3"><CheckCircle size={15} className="text-blue-600 shrink-0"/><p className="text-xs text-blue-700"><strong>{parsed.length} products</strong> ready{errors.length>0&&`, ${errors.length} skipped`}.</p></div>
+            {errors.length>0&&<div className="rounded-xl bg-amber-50 border border-amber-200 p-3 space-y-1">{errors.map((e,i)=><p key={i} className="text-xs text-amber-700">{e}</p>)}</div>}
+            <div className="space-y-2 max-h-64 overflow-y-auto">{parsed.map((p,i)=>(<div key={i} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3"><span>\u2705</span><div className="flex-1 min-w-0"><p className="text-sm font-medium text-gray-800 truncate">{p.name}</p><p className="text-xs text-gray-400">{p.brand} \u00b7 {formatPrice(p.finalPrice??0)} \u00b7 Stock: {p.stockTotal}</p></div></div>))}</div>
+            <div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={()=>setStep("upload")}>\u2190 Back</Button><Button className="flex-1 bg-green-600 hover:bg-green-700 gap-2" onClick={handleImport} disabled={parsed.length===0}><CheckCircle size={15}/> Import {parsed.length}</Button></div>
           </div>)}
-          {step==="done" && (<div className="flex flex-col items-center py-10 gap-4"><div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100"><CheckCircle size={32} className="text-green-600"/></div><div className="text-center"><p className="font-display text-xl font-bold text-gray-900">Import Complete!</p><p className="text-sm text-gray-500 mt-1">{parsed.length} products saved permanently</p></div><div className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-xs text-blue-700 text-center max-w-xs">\ud83d\udca1 Tap \u270f\ufe0f on any product to edit or add photos individually.</div><Button onClick={reset} className="gap-2 mt-2">Done</Button></div>)}
+          {step==="done" && (<div className="flex flex-col items-center py-10 gap-4"><div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100"><CheckCircle size={32} className="text-green-600"/></div><p className="font-display text-xl font-bold text-gray-900">Import Complete!</p><p className="text-sm text-gray-500">{parsed.length} products saved</p><Button onClick={reset} className="mt-2">Done</Button></div>)}
         </div>
       </DialogContent>
     </Dialog>
@@ -247,6 +376,7 @@ export default function ProductsPage() {
   const [formProduct, setFormProduct] = useState<Partial<Product>|null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [photoImportOpen, setPhotoImportOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Product|null>(null);
 
   let filtered = products;
@@ -271,7 +401,13 @@ export default function ProductsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div><h1 className="font-display text-2xl font-bold text-gray-900">Product Catalog</h1><p className="text-sm text-gray-500">{products.length} products{low>0&&<span className="ml-2 text-amber-600">\u00b7 \u26a0\ufe0f {low} low</span>}{out>0&&<span className="ml-2 text-red-600">\u00b7 \ud83d\udd34 {out} out</span>}</p>{!isOwner&&<p className="text-xs text-blue-600 mt-0.5">\ud83d\udc41\ufe0f Read-only \u2014 contact owner to edit</p>}</div>
-        {isOwner&&(<div className="flex gap-2 shrink-0"><Button variant="outline" size="sm" className="gap-2" onClick={()=>setImportOpen(true)}><FileSpreadsheet size={15} className="text-green-600"/><span className="hidden sm:inline">Import Excel</span></Button><Button size="sm" className="gap-2" onClick={()=>{setFormProduct(empty());setFormOpen(true);}}><Plus size={15}/> Add Product</Button></div>)}
+        {isOwner&&(<div className="flex gap-2 shrink-0 flex-wrap justify-end">
+          <Button variant="outline" size="sm" className="gap-2" onClick={()=>setPhotoImportOpen(true)} title="Import from price list photo">
+            <span>\ud83d\udcf8</span><span className="hidden sm:inline">Scan Price List</span>
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={()=>setImportOpen(true)}><FileSpreadsheet size={15} className="text-green-600"/><span className="hidden sm:inline">Import Excel</span></Button>
+          <Button size="sm" className="gap-2" onClick={()=>{setFormProduct(empty());setFormOpen(true);}}><Plus size={15}/> Add Product</Button>
+        </div>)}
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/><Input placeholder="Search by name, brand, SKU, color, rack..." className="pl-9 h-10" value={search} onChange={(e)=>setSearch(e.target.value)}/>{search&&<button onClick={()=>setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X size={15}/></button>}</div>
@@ -291,6 +427,7 @@ export default function ProductsPage() {
           </motion.div>
         ))}</div></AnimatePresence>)}
       <ProductFormDialog product={formProduct} open={formOpen} onClose={()=>{setFormOpen(false);setFormProduct(null);}} onSave={handleSave}/>
+      <PhotoPriceListDialog open={photoImportOpen} onClose={()=>setPhotoImportOpen(false)} onImport={handleImport}/>
       <ExcelImportDialog open={importOpen} onClose={()=>setImportOpen(false)} onImport={handleImport}/>
       {deleteTarget&&<DeleteConfirm product={deleteTarget} onConfirm={handleDelete} onCancel={()=>setDeleteTarget(null)}/>}
     </div>
