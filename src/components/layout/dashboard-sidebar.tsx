@@ -5,21 +5,31 @@ import { LayoutDashboard, Package, CalendarCheck, Users, BarChart3, LogOut, Menu
 import { cn } from "@/lib/utils/cn";
 import { APP_CONFIG, OWNER_NAV } from "@/lib/constants";
 import { useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 
 const ICONS = { LayoutDashboard, Package, CalendarCheck, Users, BarChart3, Search } as const;
 
 export function DashboardSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { data: session } = useSession();
+  const role = (session?.user as { role?: string } | undefined)?.role ?? "";
+
+  // Staff only see Price Lookup and Appointments (read-only)
+  // Owner sees everything
+  const navItems = role === "staff"
+    ? OWNER_NAV.filter((item) => ["/dashboard/staff-lookup", "/dashboard/appointments"].includes(item.href))
+    : OWNER_NAV;
 
   const nav = (
     <nav className="flex flex-col gap-0.5 p-3">
-      {OWNER_NAV.map((item) => {
+      {navItems.map((item) => {
         const Icon = ICONS[item.icon as keyof typeof ICONS];
         const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
         return (
           <Link key={item.href} href={item.href} onClick={() => setOpen(false)}
-            className={cn("flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+            className={cn(
+              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
               active ? "bg-brand-wine text-white shadow-sm" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             )}>
             <Icon size={18} />
@@ -46,7 +56,7 @@ export function DashboardSidebar() {
         </div>
         <div className="flex-1 overflow-y-auto">{nav}</div>
         <div className="border-t border-gray-200 p-3">
-          <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors">
+          <button onClick={() => signOut({ callbackUrl: "/login" })} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors">
             <LogOut size={18} /> Sign Out
           </button>
         </div>
