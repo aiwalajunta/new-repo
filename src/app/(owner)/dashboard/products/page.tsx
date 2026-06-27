@@ -34,7 +34,9 @@ function ProductFormDialog({ product, open, onClose, onSave }: { product: Partia
   const [dragOver, setDragOver] = useState(false);
   const [stockAdj, setStockAdj] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [aiScanning, setAiScanning] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const aiFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setForm(product ?? empty()); setTab("details"); setStockAdj(0); }, [product]);
   const set = (k: keyof Product, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
@@ -48,6 +50,38 @@ function ProductFormDialog({ product, open, onClose, onSave }: { product: Partia
     catch { toast({ title: "Failed to load images", variant: "error" }); }
     finally { setUploading(false); }
   }, [form.imageUrls]);
+
+  // AI scan: upload photo, Claude Vision extracts product details
+  const handleAiScan = async (file: File) => {
+    setAiScanning(true);
+    toast({ title: "\ud83e\udd16 Scanning photo for product details...", variant: "default" });
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const base64 = dataUrl.split(",")[1];
+      const res = await fetch("/api/ai-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64, currentForm: form }),
+      });
+      if (!res.ok) throw new Error("Scan failed");
+      const data = await res.json() as Partial<Product> & { confidence?: string };
+      // Merge AI fields into form, only filling empty fields
+      const merged: Partial<Product> = { ...form };
+      const fields = ["name", "brand", "fabric", "colors", "pattern", "description", "occasions", "sizes"] as const;
+      for (const key of fields) {
+        const val = data[key as keyof typeof data];
+        const cur = merged[key as keyof Product];
+        const isEmpty = !cur || (Array.isArray(cur) ? cur.length === 0 : String(cur).trim() === "");
+        if (val && isEmpty) (merged as Record<string, unknown>)[key] = val;
+      }
+      merged.imageUrls = [dataUrl, ...(form.imageUrls ?? [])];
+      setForm(merged);
+      setTab("details");
+      toast({ title: `\u2705 Details extracted! Review and save. ${data.confidence ?? ""}`, variant: "success" });
+    } catch {
+      toast({ title: "Could not extract details. Fill manually.", variant: "error" });
+    } finally { setAiScanning(false); }
+  };
 
   const applyAdj = () => { const tot = Math.max(0, (form.stockTotal ?? 0) + stockAdj); set("stockTotal", tot); set("stockAvailable", Math.max(0, tot - (form.stockReserved ?? 0))); toast({ title: `Stock: ${form.stockTotal} \u2192 ${tot}`, variant: "success" }); setStockAdj(0); };
   const handleSave = () => {
@@ -86,16 +120,27 @@ function ProductFormDialog({ product, open, onClose, onSave }: { product: Partia
             <div className="space-y-1"><label className="text-xs font-semibold text-gray-600">Rack Location</label><Input placeholder="A-12" value={form.rackLocation??""} onChange={(e)=>set("rackLocation",e.target.value)}/></div>
             <div className="space-y-1"><label className="text-xs font-semibold text-gray-600">Pattern / Work</label><Input placeholder="Zari, Embroidery" value={form.pattern??""} onChange={(e)=>set("pattern",e.target.value)}/></div>
             <div className="col-span-2 space-y-1"><label className="text-xs font-semibold text-gray-600">Description</label><textarea rows={2} placeholder="Product description..." value={form.description??""} onChange={(e)=>set("description",e.target.value)} className="flex w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-wine"/></div>
-            <div className="col-span-2 space-y-1"><label className="text-xs font-semibold text-gray-600">Remarks / Notes</label><Input placeholder="Internal notes..." value={form.notes??""} onChange={(e)=>set("notes",e.target.value)}/></div>
+            <div className="col-span-2 space-y-1"><label className="text-xs font-semibold text-gray-600">Remarks</label><Input placeholder="Internal notes..." value={form.notes??""} onChange={(e)=>set("notes",e.target.value)}/></div>
             <div className="col-span-2 space-y-1"><label className="text-xs font-semibold text-gray-600">Occasions</label><div className="flex flex-wrap gap-1.5">{PRODUCT_OCCASIONS.map((occ)=>{const on=(form.occasions??[]).includes(occ);return(<button key={occ} type="button" onClick={()=>set("occasions",on?(form.occasions??[]).filter((o)=>o!==occ):[...(form.occasions??[]),occ])} className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${on?"bg-brand-wine text-white border-brand-wine":"border-gray-200 text-gray-600 hover:border-brand-wine"}`}>{occ}</button>);})}</div></div>
             <div className="col-span-2 flex items-center gap-6 pt-1">{([["isActive","Active listing"],["isFeatured","Featured on home"]] as const).map(([k,label])=>(<label key={k} className="flex cursor-pointer items-center gap-2"><input type="checkbox" checked={!!form[k]} onChange={(e)=>set(k,e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-brand-wine focus:ring-brand-wine"/><span className="text-sm text-gray-700">{label}</span></label>))}</div>
           </div>)}
           {tab==="images" && (<div className="space-y-4">
+            {/* Bulk upload — no camera lock, pick multiple from gallery */}
             <div onDrop={(e)=>{e.preventDefault();setDragOver(false);handleImageUpload(Array.from(e.dataTransfer.files));}} onDragOver={(e)=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onClick={()=>fileRef.current?.click()} className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-8 cursor-pointer transition-colors ${dragOver?"border-brand-wine bg-brand-rose":"border-gray-200 hover:border-brand-wine hover:bg-gray-50"}`}>
-              {uploading?<><Sparkles size={20} className="animate-spin text-brand-wine"/><span className="text-sm text-brand-wine font-medium">Processing...</span></>:<><Upload size={32} className="text-gray-400"/><div className="text-center"><p className="text-sm font-semibold text-gray-700">Tap to upload product photos</p><p className="text-xs text-gray-400 mt-0.5">Saved permanently across all pages</p></div></>}
+              {uploading?<><Sparkles size={20} className="animate-spin text-brand-wine"/><span className="text-sm text-brand-wine font-medium">Uploading photos...</span></>
+                :<><Upload size={32} className="text-gray-400"/><div className="text-center"><p className="text-sm font-semibold text-gray-700">Tap to upload photos</p><p className="text-xs text-gray-400 mt-0.5">Pick multiple from gallery \u00b7 drag & drop \u00b7 saved permanently</p></div></>}
             </div>
-            <input ref={fileRef} type="file" accept="image/*" multiple capture="environment" className="hidden" onChange={(e)=>{if(e.target.files)handleImageUpload(Array.from(e.target.files));}}/>
-            {(form.imageUrls??[]).length===0?<div className="flex flex-col items-center gap-2 py-6 text-center"><ImageIcon size={32} className="text-gray-200"/><p className="text-sm text-gray-400">No photos yet. Tap above or add Image URL in Excel.</p></div>:<div className="grid grid-cols-3 gap-3">{(form.imageUrls??[]).map((url,i)=>(<div key={i} className="relative group aspect-[3/4] rounded-xl overflow-hidden border border-gray-200 bg-gray-50"><img src={url} alt={`Photo ${i+1}`} className="h-full w-full object-cover"/>{i===0&&<span className="absolute top-1.5 left-1.5 bg-brand-wine text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">PRIMARY</span>}<button onClick={(e)=>{e.stopPropagation();set("imageUrls",(form.imageUrls??[]).filter((_,j)=>j!==i));}} className="absolute top-1.5 right-1.5 h-6 w-6 flex items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button></div>))}</div>}
+            {/* No capture= attribute so user can choose camera OR gallery */}
+            <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e)=>{if(e.target.files)handleImageUpload(Array.from(e.target.files));}}/>
+            {/* AI scan button */}
+            <button type="button" onClick={()=>aiFileRef.current?.click()} disabled={aiScanning} className="flex items-center gap-2 text-xs text-brand-wine hover:underline mx-auto disabled:opacity-50">
+              <Sparkles size={13} className={aiScanning?"animate-spin":""}/>
+              {aiScanning ? "Scanning photo..." : "\ud83e\udd16 Scan product photo to auto-fill details (AI)"}
+            </button>
+            <input ref={aiFileRef} type="file" accept="image/*" className="hidden" onChange={(e)=>{if(e.target.files?.[0])handleAiScan(e.target.files[0]);}}/>
+            {(form.imageUrls??[]).length===0
+              ?<div className="flex flex-col items-center gap-2 py-4 text-center"><ImageIcon size={32} className="text-gray-200"/><p className="text-sm text-gray-400">No photos yet.</p></div>
+              :<div className="grid grid-cols-3 gap-3">{(form.imageUrls??[]).map((url,i)=>(<div key={i} className="relative group aspect-[3/4] rounded-xl overflow-hidden border border-gray-200 bg-gray-50"><img src={url} alt={`Photo ${i+1}`} className="h-full w-full object-cover"/>{i===0&&<span className="absolute top-1.5 left-1.5 bg-brand-wine text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">PRIMARY</span>}<button onClick={(e)=>{e.stopPropagation();set("imageUrls",(form.imageUrls??[]).filter((_,j)=>j!==i));}} className="absolute top-1.5 right-1.5 h-6 w-6 flex items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button></div>))}</div>}
           </div>)}
           {tab==="stock" && (<div className="space-y-5">
             <div className="grid grid-cols-3 gap-3">{[{label:"Total",val:form.stockTotal??0,color:"text-gray-900"},{label:"Reserved",val:form.stockReserved??0,color:"text-amber-600"},{label:"Available",val:form.stockAvailable??0,color:(form.stockAvailable??0)===0?"text-red-600":(form.stockAvailable??0)<=5?"text-amber-600":"text-green-600"}].map((s)=>(<div key={s.label} className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-center"><p className={`font-display text-3xl font-bold ${s.color}`}>{s.val}</p><p className="text-xs text-gray-500 mt-1">{s.label}</p></div>))}</div>
@@ -166,33 +211,22 @@ function ExcelImportDialog({ open, onClose, onImport }: { open:boolean; onClose:
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
           {step==="upload" && (<>
             <div onDrop={(e)=>{e.preventDefault();setDragOver(false);if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0]);}} onDragOver={(e)=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onClick={()=>fileRef.current?.click()} className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-10 cursor-pointer transition-colors ${dragOver?"border-green-500 bg-green-50":"border-gray-200 hover:border-green-400 hover:bg-gray-50"}`}>
-              {loading?<><FileSpreadsheet size={36} className="text-green-500 animate-pulse"/><p className="text-sm text-gray-600">Reading file...</p></>:<><FileSpreadsheet size={40} className="text-green-500"/><div className="text-center"><p className="font-semibold text-gray-700">Drop .xlsx or .csv here</p><p className="text-xs text-gray-400 mt-1">All product fields supported \u00b7 Image URL column for photos</p></div></>}
+              {loading?<><FileSpreadsheet size={36} className="text-green-500 animate-pulse"/><p className="text-sm text-gray-600">Reading file...</p></>:<><FileSpreadsheet size={40} className="text-green-500"/><div className="text-center"><p className="font-semibold text-gray-700">Drop .xlsx or .csv here</p><p className="text-xs text-gray-400 mt-1">All 17 product fields supported</p></div></>}
             </div>
             <input ref={fileRef} type="file" accept=".xlsx,.csv" className="hidden" onChange={(e)=>{if(e.target.files?.[0])processFile(e.target.files[0]);}}/>
             <div className="rounded-xl border border-green-200 bg-green-50 p-4 space-y-3">
-              <p className="text-sm font-semibold text-green-800">\ud83d\udce5 Full Template Format \u2014 all fields supported</p>
+              <p className="text-sm font-semibold text-green-800">\ud83d\udce5 Full Template \u2014 all fields supported</p>
               <p className="text-xs text-green-700">* = required. Add <strong>Image URL</strong> column for photos. Owner can edit any field after import.</p>
               <div className="overflow-x-auto rounded-lg border border-green-200"><table className="text-[10px] border-collapse w-full"><thead><tr className="bg-green-100">{COLS.map((c)=><th key={c} className="border border-green-200 px-2 py-1.5 text-left text-green-800 font-semibold whitespace-nowrap">{c}</th>)}</tr></thead><tbody>{SAMPLE.map((row,i)=><tr key={i} className={i%2===0?"bg-white":"bg-green-50/40"}>{row.map((cell,j)=><td key={j} className="border border-green-200 px-2 py-1 text-gray-600 whitespace-nowrap">{cell}</td>)}</tr>)}</tbody></table></div>
             </div>
           </>)}
           {step==="preview" && (<div className="space-y-4">
-            <div className="flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-200 p-3"><CheckCircle size={15} className="text-blue-600 shrink-0"/><p className="text-xs text-blue-700"><strong>{parsed.length} products</strong> ready to import{errors.length>0&&`, ${errors.length} skipped`}. Owner can edit any product after.</p></div>
+            <div className="flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-200 p-3"><CheckCircle size={15} className="text-blue-600 shrink-0"/><p className="text-xs text-blue-700"><strong>{parsed.length} products</strong> ready{errors.length>0&&`, ${errors.length} skipped`}. Owner can edit any product after.</p></div>
             {errors.length>0&&<div className="rounded-xl bg-amber-50 border border-amber-200 p-3 space-y-1"><p className="text-xs font-semibold text-amber-800">\u26a0\ufe0f Skipped:</p>{errors.map((e,i)=><p key={i} className="text-xs text-amber-700">{e}</p>)}</div>}
-            <div className="space-y-2 max-h-64 overflow-y-auto">{parsed.map((p,i)=>(<div key={i} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
-              <span>\u2705</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
-                <p className="text-xs text-gray-400">{p.brand} \u00b7 {getCatName(p.categoryId??"")} \u00b7 {formatPrice(p.finalPrice??0)} \u00b7 Stock: {p.stockTotal}{(p.imageUrls??[]).length>0&&" \u00b7 \ud83d\uddbc\ufe0f Photo"}</p>
-              </div>
-            </div>))}</div>
+            <div className="space-y-2 max-h-64 overflow-y-auto">{parsed.map((p,i)=>(<div key={i} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3"><span>\u2705</span><div className="flex-1 min-w-0"><p className="text-sm font-medium text-gray-800 truncate">{p.name}</p><p className="text-xs text-gray-400">{p.brand} \u00b7 {getCatName(p.categoryId??"")} \u00b7 {formatPrice(p.finalPrice??0)} \u00b7 Stock: {p.stockTotal}{(p.imageUrls??[]).length>0&&" \u00b7 \ud83d\uddbc\ufe0f Photo"}</p></div></div>))}</div>
             <div className="flex gap-3 pt-2"><Button variant="outline" className="flex-1" onClick={()=>setStep("upload")}>\u2190 Back</Button><Button className="flex-1 bg-green-600 hover:bg-green-700 gap-2" onClick={handleImport} disabled={parsed.length===0}><CheckCircle size={15}/> Import {parsed.length} Products</Button></div>
           </div>)}
-          {step==="done" && (<div className="flex flex-col items-center py-10 gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100"><CheckCircle size={32} className="text-green-600"/></div>
-            <div className="text-center"><p className="font-display text-xl font-bold text-gray-900">Import Complete!</p><p className="text-sm text-gray-500 mt-1">{parsed.length} products saved permanently</p></div>
-            <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-xs text-blue-700 text-center max-w-xs">\ud83d\udca1 All data saved. Tap \u270f\ufe0f on any product to edit or add photos.</div>
-            <Button onClick={reset} className="gap-2 mt-2">Done</Button>
-          </div>)}
+          {step==="done" && (<div className="flex flex-col items-center py-10 gap-4"><div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100"><CheckCircle size={32} className="text-green-600"/></div><div className="text-center"><p className="font-display text-xl font-bold text-gray-900">Import Complete!</p><p className="text-sm text-gray-500 mt-1">{parsed.length} products saved permanently</p></div><div className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-xs text-blue-700 text-center max-w-xs">\ud83d\udca1 Tap \u270f\ufe0f on any product to edit or add photos individually.</div><Button onClick={reset} className="gap-2 mt-2">Done</Button></div>)}
         </div>
       </DialogContent>
     </Dialog>
@@ -222,11 +256,11 @@ export default function ProductsPage() {
   if (stockFilter==="out") filtered=filtered.filter((p)=>p.stockAvailable===0);
 
   const handleSave = (saved: Partial<Product>) => {
-    if (saved.id) { updateProduct(saved.id, saved); toast({ title: "Saved \u2713 \u2014 updated everywhere", variant: "success" }); }
-    else { addProduct(saved); toast({ title: "Added \u2713 \u2014 visible on all pages", variant: "success" }); }
+    if (saved.id) { updateProduct(saved.id, saved); toast({ title: "\u2713 Saved \u2014 updated everywhere", variant: "success" }); }
+    else { addProduct(saved); toast({ title: "\u2713 Product added \u2014 visible on all pages", variant: "success" }); }
   };
   const handleDelete = () => { if (!deleteTarget) return; deleteProduct(deleteTarget.id); toast({ title: `"${deleteTarget.name}" deleted`, variant: "success" }); setDeleteTarget(null); };
-  const handleImport = (imported: Partial<Product>[]) => { importProducts(imported); toast({ title: `${imported.length} products imported \u2713`, variant: "success" }); };
+  const handleImport = (imported: Partial<Product>[]) => { importProducts(imported); toast({ title: `\u2713 ${imported.length} products imported and saved`, variant: "success" }); };
 
   const low=products.filter((p)=>p.stockAvailable>0&&p.stockAvailable<=STOCK_LOW_THRESHOLD).length;
   const out=products.filter((p)=>p.stockAvailable===0).length;
