@@ -10,12 +10,18 @@ export default function RootPage() {
   useEffect(() => {
     if (status === "loading") return;
     if (!session) {
+      // Not logged in → go to login
       router.replace("/login");
     } else {
       const role = (session.user as { role?: string }).role;
-      if (role === "owner" || role === "staff") {
+      if (role === "owner") {
+        // Owner → full dashboard
         router.replace("/dashboard");
+      } else if (role === "staff") {
+        // Staff → price lookup (their primary tool)
+        router.replace("/dashboard/staff-lookup");
       } else {
+        // Customer → browse
         router.replace("/browse");
       }
     }

@@ -1,7 +1,8 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Package, Edit2, Trash2, X, Upload, FileSpreadsheet, CheckCircle, AlertTriangle, Sparkles, Image as ImageIcon } from "lucide-react";
+import { Plus, Search, Package, Edit2, Trash2, X, Upload, FileSpreadsheet, CheckCircle, AlertTriangle, Sparkles, Image as ImageIcon, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -183,6 +184,10 @@ function DeleteConfirm({ product, onConfirm, onCancel }: { product: Product; onC
 }
 
 export default function OwnerProductsPage() {
+  // Role check — staff see read-only, owner can edit
+  const { data: session } = useSession();
+  const isOwner = (session?.user as { role?: string } | undefined)?.role === "owner";
+
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("");
@@ -206,11 +211,17 @@ export default function OwnerProductsPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <div><h1 className="font-display text-2xl font-bold text-gray-900">Product Catalog</h1><p className="text-sm text-gray-500">{products.length} products{low>0 && <span className="ml-2 text-amber-600">\u00b7 \u26a0\ufe0f {low} low</span>}{out>0 && <span className="ml-2 text-red-600">\u00b7 \ud83d\udd34 {out} out</span>}</p></div>
-        <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" className="gap-2" onClick={()=>setImportOpen(true)}><FileSpreadsheet size={15} className="text-green-600"/><span className="hidden sm:inline">Import Excel</span></Button>
-          <Button size="sm" className="gap-2" onClick={()=>{setFormProduct(empty());setFormOpen(true);}}><Plus size={15}/> Add Product</Button>
+        <div>
+          <h1 className="font-display text-2xl font-bold text-gray-900">Product Catalog</h1>
+          <p className="text-sm text-gray-500">{products.length} products{low>0 && <span className="ml-2 text-amber-600">\u00b7 \u26a0\ufe0f {low} low</span>}{out>0 && <span className="ml-2 text-red-600">\u00b7 \ud83d\udd34 {out} out</span>}</p>
+          {!isOwner && <p className="text-xs text-blue-600 mt-0.5">\ud83d\udc41\ufe0f Read-only view \u2014 contact owner to make changes</p>}
         </div>
+        {isOwner && (
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" className="gap-2" onClick={()=>setImportOpen(true)}><FileSpreadsheet size={15} className="text-green-600"/><span className="hidden sm:inline">Import Excel</span></Button>
+            <Button size="sm" className="gap-2" onClick={()=>{setFormProduct(empty());setFormOpen(true);}}><Plus size={15}/> Add Product</Button>
+          </div>
+        )}
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/><Input placeholder="Search by name, brand, SKU, color, rack..." className="pl-9 h-10" value={search} onChange={(e)=>setSearch(e.target.value)}/>{search && <button onClick={()=>setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X size={15}/></button>}</div>
@@ -230,14 +241,27 @@ export default function OwnerProductsPage() {
                 <div className="flex items-center gap-1.5 mt-0.5 flex-wrap text-[11px] text-gray-400">{p.brand && <><span className="font-medium text-gray-600">{p.brand}</span><span>\u00b7</span></>}<span>{getCatName(p.categoryId)}</span>{p.fabric && <><span>\u00b7</span><span>{p.fabric}</span></>}{p.colors.length>0 && <><span>\u00b7</span><span>{p.colors.slice(0,2).join(", ")}</span></>}{p.sku && <><span>\u00b7</span><span className="font-mono">{p.sku}</span></>}{p.rackLocation && <><span>\u00b7</span><span className="font-medium text-blue-600">\ud83d\udccd{p.rackLocation}</span></>}</div>
               </div>
               <div className="shrink-0 text-right min-w-[80px]"><p className="font-display font-bold text-brand-wine leading-tight">{formatPrice(p.finalPrice)}</p>{p.discountPct>0 && <p className="text-[10px] text-gray-400 line-through">{formatPrice(p.sellingPrice)}</p>}<p className={`text-[11px] font-semibold mt-0.5 ${p.stockAvailable===0?"text-red-600":p.stockAvailable<=STOCK_LOW_THRESHOLD?"text-amber-600":"text-gray-500"}`}>{p.stockAvailable===0?"\ud83d\udd34 OUT":p.stockAvailable<=STOCK_LOW_THRESHOLD?`\u26a0\ufe0f ${p.stockAvailable} left`:`${p.stockAvailable} in stock`}</p></div>
-              <div className="flex gap-0.5 shrink-0"><button onClick={()=>{setFormProduct({...p});setFormOpen(true);}} title="Edit" className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:bg-brand-wine/10 hover:text-brand-wine transition-colors"><Edit2 size={15}/></button><button onClick={()=>setDeleteTarget(p)} title="Delete" className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"><Trash2 size={15}/></button></div>
+              <div className="flex gap-0.5 shrink-0">
+                {isOwner ? (
+                  <>
+                    <button onClick={()=>{setFormProduct({...p});setFormOpen(true);}} title="Edit product" className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:bg-brand-wine/10 hover:text-brand-wine transition-colors"><Edit2 size={15}/></button>
+                    <button onClick={()=>setDeleteTarget(p)} title="Delete product" className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"><Trash2 size={15}/></button>
+                  </>
+                ) : (
+                  <button title="View only" className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-300 cursor-default"><Eye size={15}/></button>
+                )}
+              </div>
             </CardContent></Card>
           </motion.div>
         ))}</div></AnimatePresence>
       )}
-      <ProductFormDialog product={formProduct} open={formOpen} onClose={()=>{setFormOpen(false);setFormProduct(null);}} onSave={handleSave}/>
-      <ExcelImportDialog open={importOpen} onClose={()=>setImportOpen(false)}/>
-      {deleteTarget && <DeleteConfirm product={deleteTarget} onConfirm={handleDelete} onCancel={()=>setDeleteTarget(null)}/>}
+      {isOwner && (
+        <>
+          <ProductFormDialog product={formProduct} open={formOpen} onClose={()=>{setFormOpen(false);setFormProduct(null);}} onSave={handleSave}/>
+          <ExcelImportDialog open={importOpen} onClose={()=>setImportOpen(false)}/>
+          {deleteTarget && <DeleteConfirm product={deleteTarget} onConfirm={handleDelete} onCancel={()=>setDeleteTarget(null)}/>}
+        </>
+      )}
     </div>
   );
 }
