@@ -9,9 +9,14 @@ const withSerwist = withSerwistInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  env: {
-    NEXT_PUBLIC_SHEETS_MODE: process.env.GOOGLE_SPREADSHEET_ID ? "live" : "mock",
-  },
+  // Keep googleapis and Node.js-only packages server-side only
+  serverExternalPackages: [
+    "googleapis",
+    "google-auth-library",
+    "gcp-metadata",
+    "google-logging-utils",
+    "bcryptjs",
+  ],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "res.cloudinary.com" },
