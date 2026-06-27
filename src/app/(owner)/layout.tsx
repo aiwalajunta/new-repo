@@ -1,10 +1,12 @@
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
+import { StoreHydrator } from "@/components/layout/store-hydrator";
 import { SessionProvider } from "next-auth/react";
 
 export default function OwnerLayout({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
+      <StoreHydrator />
       <div className="flex h-screen overflow-hidden bg-gray-50">
         <DashboardSidebar />
         <div className="flex flex-1 flex-col overflow-hidden">

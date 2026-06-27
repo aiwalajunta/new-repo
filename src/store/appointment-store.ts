@@ -4,6 +4,8 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { MOCK_APPOINTMENTS } from "@/lib/sheets/mock-data";
 import type { Appointment } from "@/lib/sheets/schemas";
 
+const STORAGE_KEY = "aditya-textile-appointments";
+
 interface AppointmentStore {
   appointments: Appointment[];
   hydrated: boolean;
@@ -16,21 +18,30 @@ interface AppointmentStore {
 export const useAppointmentStore = create<AppointmentStore>()(
   persist(
     (set) => ({
-      appointments: MOCK_APPOINTMENTS,
+      appointments: [], // start empty — rehydrated from localStorage immediately
       hydrated: false,
       setHydrated: (v) => set({ hydrated: v }),
       addAppointment: (a) => set((s) => ({ appointments: [a, ...s.appointments] })),
-      updateAppointment: (id, updates) => set((s) => ({
-        appointments: s.appointments.map((a) =>
-          a.id === id ? { ...a, ...updates, updatedAt: new Date().toISOString() } : a
-        ),
-      })),
-      deleteAppointment: (id) => set((s) => ({ appointments: s.appointments.filter((a) => a.id !== id) })),
+      updateAppointment: (id, updates) =>
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === id ? { ...a, ...updates, updatedAt: new Date().toISOString() } : a
+          ),
+        })),
+      deleteAppointment: (id) =>
+        set((s) => ({ appointments: s.appointments.filter((a) => a.id !== id) })),
     }),
     {
-      name: "aditya-textile-appointments",
+      name: STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
-      onRehydrateStorage: () => (state) => { if (state) state.setHydrated(true); },
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        // Only use mock data if localStorage is genuinely empty (very first use)
+        if (!state.appointments || state.appointments.length === 0) {
+          state.appointments = MOCK_APPOINTMENTS;
+        }
+        state.hydrated = true;
+      },
     }
   )
 );

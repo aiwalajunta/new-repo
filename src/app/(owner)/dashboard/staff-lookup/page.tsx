@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Search, Camera, Sparkles, X, Package } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ function ProductSheet({ product, onClose }: { product: Product; onClose: () => v
           <div className="rounded-xl border border-brand-border bg-brand-wine/5 p-3 text-center"><p className="text-xs text-gray-500">Selling Price</p><p className="font-display text-xl font-bold text-brand-wine mt-0.5">{formatPrice(product.finalPrice)}</p>{product.discountPct>0&&<p className="text-xs text-gray-400 line-through">{formatPrice(product.sellingPrice)}</p>}</div>
           <div className={`rounded-xl border p-3 text-center ${product.stockAvailable===0?"border-red-200 bg-red-50":product.stockAvailable<=STOCK_LOW_THRESHOLD?"border-amber-200 bg-amber-50":"border-green-200 bg-green-50"}`}><p className="text-xs text-gray-500">Available Stock</p><p className={`font-display text-xl font-bold mt-0.5 ${product.stockAvailable===0?"text-red-600":product.stockAvailable<=STOCK_LOW_THRESHOLD?"text-amber-600":"text-green-600"}`}>{product.stockAvailable===0?"OUT":product.stockAvailable}</p><p className="text-xs text-gray-400">{product.stockAvailable===0?"Not available":"units"}</p></div>
         </div>
-        <div className="space-y-2">{[{label:"Brand",value:product.brand},{label:"Code / SKU",value:product.sku},{label:"Colors",value:product.colors.join(", ")},{label:"Sizes",value:product.sizes.join(", ")},{label:"Fabric",value:product.fabric},{label:"Rack Location",value:product.rackLocation,highlight:true},{label:"Occasions",value:product.occasions.join(", ")},{label:"Remarks",value:product.notes}].filter((d)=>d.value).map((d)=>(<div key={d.label} className="flex items-start gap-3"><span className="text-xs text-gray-400 w-28 shrink-0 pt-0.5">{d.label}</span><span className={`text-sm font-medium flex-1 ${d.highlight?"text-blue-600":"text-gray-800"}`}>{d.value}</span></div>))}</div>
+        <div className="space-y-2">{[{label:"Brand",value:product.brand},{label:"Code / SKU",value:product.sku},{label:"Colors",value:product.colors.join(", ")},{label:"Sizes",value:product.sizes.join(", ")},{label:"Fabric",value:product.fabric},{label:"Rack Location",value:product.rackLocation,highlight:true},{label:"Pattern",value:product.pattern},{label:"Occasions",value:product.occasions.join(", ")},{label:"Remarks",value:product.notes}].filter((d)=>d.value).map((d)=>(<div key={d.label} className="flex items-start gap-3"><span className="text-xs text-gray-400 w-28 shrink-0 pt-0.5">{d.label}</span><span className={`text-sm font-medium flex-1 ${d.highlight?"text-blue-600":"text-gray-800"}`}>{d.value}</span></div>))}</div>
       </DialogContent>
     </Dialog>
   );
@@ -35,26 +35,35 @@ function ProductSheet({ product, onClose }: { product: Product; onClose: () => v
 
 function ImageSearchDialog({ open, onClose, onResult }: { open:boolean; onClose:()=>void; onResult:(q:string)=>void }) {
   const [phase, setPhase] = useState<"idle"|"scanning"|"done">("idle");
-  const fileRef = useRef<HTMLInputElement>(null);
+  const fileRef = useState(() => typeof document !== "undefined" ? document.createElement("input") : null)[0];
   const runAI = () => { setPhase("scanning"); setTimeout(()=>setPhase("done"),2000); };
   return (
     <Dialog open={open} onOpenChange={()=>{onClose();setPhase("idle");}}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><Sparkles size={18} className="text-brand-gold"/> AI Photo Search</DialogTitle><DialogDescription>Take or upload a garment photo to find matching products.</DialogDescription></DialogHeader>
-        {phase==="idle"&&(<div className="space-y-4"><div onClick={()=>fileRef.current?.click()} className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-gray-200 hover:border-brand-wine hover:bg-gray-50 p-8 cursor-pointer transition-colors"><Camera size={36} className="text-gray-400"/><div className="text-center"><p className="text-sm font-medium text-gray-700">Take a photo or upload image</p><p className="text-xs text-gray-400 mt-0.5">AI will identify the product</p></div></div><input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={()=>runAI()}/></div>)}
+        {phase==="idle"&&(<div className="space-y-4"><div onClick={()=>{if(fileRef){fileRef.type="file";fileRef.accept="image/*";fileRef.capture="environment";fileRef.onchange=()=>runAI();fileRef.click();}}} className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-gray-200 hover:border-brand-wine hover:bg-gray-50 p-8 cursor-pointer transition-colors"><Camera size={36} className="text-gray-400"/><div className="text-center"><p className="text-sm font-medium text-gray-700">Take a photo or upload image</p><p className="text-xs text-gray-400 mt-0.5">AI will identify the product</p></div></div></div>)}
         {phase==="scanning"&&(<div className="flex flex-col items-center gap-4 py-8"><div className="relative flex h-16 w-16 items-center justify-center"><div className="absolute inset-0 rounded-full border-4 border-brand-wine border-t-transparent animate-spin"/><Sparkles size={24} className="text-brand-gold"/></div><p className="text-sm font-medium text-gray-700">Analyzing image...</p></div>)}
-        {phase==="done"&&(<div className="space-y-4"><div className="rounded-xl bg-green-50 border border-green-200 p-4 space-y-2"><p className="text-sm font-semibold text-green-800">\u2705 Analysis Complete</p>{[["Detected","Saree"],["Fabric","Silk (94%)"],["Colors","Red, Gold"],["Pattern","Zari / Border"]].map(([k,v])=>(<div key={k} className="flex items-center gap-2 text-xs"><span className="text-gray-500 w-20">{k}:</span><span className="font-medium text-gray-800">{v}</span></div>))}</div><Button className="w-full gap-2" onClick={()=>{onResult("silk saree");onClose();setPhase("idle");}}><Search size={15}/> Show Matching Products</Button></div>)}
+        {phase==="done"&&(<div className="space-y-4"><div className="rounded-xl bg-green-50 border border-green-200 p-4 space-y-2"><p className="text-sm font-semibold text-green-800">\u2705 Analysis Complete</p>{[["Detected","Saree"],["Fabric","Silk (94%)"],["Colors","Red, Gold"],["Pattern","Zari"]].map(([k,v])=>(<div key={k} className="flex items-center gap-2 text-xs"><span className="text-gray-500 w-20">{k}:</span><span className="font-medium text-gray-800">{v}</span></div>))}</div><Button className="w-full gap-2" onClick={()=>{onResult("silk saree");onClose();setPhase("idle");}}><Search size={15}/> Show Matching Products</Button></div>)}
       </DialogContent>
     </Dialog>
   );
 }
 
 export default function StaffLookupPage() {
-  const { products } = useProductStore();
+  const { products, hydrated } = useProductStore();
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("");
   const [selected, setSelected] = useState<Product|null>(null);
   const [imgSearch, setImgSearch] = useState(false);
+
+  if (!hydrated) return (
+    <div className="flex items-center justify-center py-20">
+      <div className="text-center space-y-3">
+        <div className="text-4xl">\ud83e\uddf5</div>
+        <p className="text-sm text-gray-400">Loading products...</p>
+      </div>
+    </div>
+  );
 
   let filtered = products;
   if (search) { const q=search.toLowerCase(); filtered=filtered.filter((p)=>p.name.toLowerCase().includes(q)||(p.brand??"").toLowerCase().includes(q)||p.sku.toLowerCase().includes(q)||p.colors.some((c)=>c.toLowerCase().includes(q))||p.rackLocation.toLowerCase().includes(q)||getCatName(p.categoryId).toLowerCase().includes(q)); }
