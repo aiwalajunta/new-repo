@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import { QueryProvider } from "@/components/layout/query-provider";
 import { SessionProvider } from "next-auth/react";
+import { Toaster } from "@/components/ui/toaster";
 import { APP_CONFIG } from "@/lib/constants";
 import "./globals.css";
 
@@ -9,7 +10,7 @@ const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfa
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
-  title: `${APP_CONFIG.name} — ${APP_CONFIG.tagline}`,
+  title: `${APP_CONFIG.name} \u2014 ${APP_CONFIG.tagline}`,
   description: APP_CONFIG.description,
 };
 
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SessionProvider>
           <QueryProvider>{children}</QueryProvider>
         </SessionProvider>
+        <Toaster />
       </body>
     </html>
   );
