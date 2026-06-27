@@ -1,11 +1,8 @@
 import type { NextConfig } from "next";
-import withSerwistInit from "@serwist/next";
 
-const withSerwist = withSerwistInit({
-  swSrc: "src/app/sw.ts",
-  swDest: "public/sw.js",
-  disable: process.env.NODE_ENV === "development",
-});
+// Removed Serwist/PWA for now — service worker was intercepting /api/auth/* calls
+// and causing login to fail with net::ERR_FAILED
+// Re-enable after auth is stable
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -23,11 +20,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "placehold.co" },
     ],
   },
-  experimental: {
-    serverActions: { bodySizeLimit: "2mb" },
-  },
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
 };
 
-export default withSerwist(nextConfig);
+export default nextConfig;
