@@ -6,6 +6,18 @@ import type { Product } from "@/lib/sheets/schemas";
 
 const STORAGE_KEY = "aditya-textile-products";
 
+// Sync products to server so the Telegram bot can read them
+async function syncToCatalog(products: Product[]) {
+  if (typeof window === "undefined") return;
+  try {
+    await fetch("/api/catalog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-catalog-secret": "aditya-textile-nextauth-secret-2024-fallback" },
+      body: JSON.stringify({ products }),
+    });
+  } catch { /* silent — sync is best-effort */ }
+}
+
 interface ProductStore {
   products: Product[];
   hydrated: boolean;
@@ -19,39 +31,35 @@ interface ProductStore {
 
 export const useProductStore = create<ProductStore>()(
   persist(
-    (set) => ({
-      products: [], // start empty — rehydrated from localStorage immediately
+    (set, get) => ({
+      products: [],
       hydrated: false,
       setHydrated: (v) => set({ hydrated: v }),
 
       addProduct: (p) => {
-        const np: Product = {
-          ...p,
-          id: p.id ?? `prod_${Date.now()}`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        } as Product;
-        set((s) => ({ products: [np, ...s.products] }));
+        const np: Product = { ...p, id: p.id ?? `prod_${Date.now()}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as Product;
+        const next = [np, ...get().products];
+        set({ products: next });
+        syncToCatalog(next);
       },
 
-      updateProduct: (id, updates) =>
-        set((s) => ({
-          products: s.products.map((p) =>
-            p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
-          ),
-        })),
+      updateProduct: (id, updates) => {
+        const next = get().products.map((p) => p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p);
+        set({ products: next });
+        syncToCatalog(next);
+      },
 
-      deleteProduct: (id) =>
-        set((s) => ({ products: s.products.filter((p) => p.id !== id) })),
+      deleteProduct: (id) => {
+        const next = get().products.filter((p) => p.id !== id);
+        set({ products: next });
+        syncToCatalog(next);
+      },
 
       importProducts: (imported) => {
-        const np = imported.map((p) => ({
-          ...p,
-          id: p.id ?? `imp_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        })) as Product[];
-        set((s) => ({ products: [...np, ...s.products] }));
+        const np = imported.map((p) => ({ ...p, id: p.id ?? `imp_${Date.now()}_${Math.random().toString(36).slice(2)}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })) as Product[];
+        const next = [...np, ...get().products];
+        set({ products: next });
+        syncToCatalog(next);
       },
 
       resetToMock: () => set({ products: MOCK_PRODUCTS }),
@@ -61,10 +69,7 @@ export const useProductStore = create<ProductStore>()(
       storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
-        // Only use mock data if localStorage is genuinely empty (very first use)
-        if (!state.products || state.products.length === 0) {
-          state.products = MOCK_PRODUCTS;
-        }
+        if (!state.products || state.products.length === 0) state.products = MOCK_PRODUCTS;
         state.hydrated = true;
       },
     }

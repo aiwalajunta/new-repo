@@ -1,13 +1,13 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, CalendarCheck, Users, BarChart3, LogOut, Menu, X, Search } from "lucide-react";
+import { LayoutDashboard, Package, CalendarCheck, Users, BarChart3, LogOut, Menu, X, Search, Bot } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { APP_CONFIG, OWNER_NAV } from "@/lib/constants";
 import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 
-const ICONS = { LayoutDashboard, Package, CalendarCheck, Users, BarChart3, Search } as const;
+const ICONS = { LayoutDashboard, Package, CalendarCheck, Users, BarChart3, Search, Bot } as const;
 
 export function DashboardSidebar() {
   const pathname = usePathname();
@@ -15,8 +15,6 @@ export function DashboardSidebar() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role ?? "";
 
-  // Staff only see Price Lookup and Appointments (read-only)
-  // Owner sees everything
   const navItems = role === "staff"
     ? OWNER_NAV.filter((item) => ["/dashboard/staff-lookup", "/dashboard/appointments"].includes(item.href))
     : OWNER_NAV;
@@ -28,10 +26,8 @@ export function DashboardSidebar() {
         const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
         return (
           <Link key={item.href} href={item.href} onClick={() => setOpen(false)}
-            className={cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-              active ? "bg-brand-wine text-white shadow-sm" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            )}>
+            className={cn("flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+              active ? "bg-brand-wine text-white shadow-sm" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900")}>
             <Icon size={18} />
             <span>{item.label}</span>
           </Link>
@@ -46,10 +42,7 @@ export function DashboardSidebar() {
         {open ? <X size={18} /> : <Menu size={18} />}
       </button>
       {open && <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setOpen(false)} />}
-      <aside className={cn(
-        "fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-gray-200 bg-white transition-transform duration-200 md:relative md:translate-x-0",
-        open ? "translate-x-0" : "-translate-x-full"
-      )}>
+      <aside className={cn("fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-gray-200 bg-white transition-transform duration-200 md:relative md:translate-x-0", open ? "translate-x-0" : "-translate-x-full")}>
         <div className="flex h-14 items-center gap-3 border-b border-gray-200 px-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-wine text-white text-xs font-bold">AT</div>
           <div><p className="text-sm font-bold text-brand-wine leading-tight">{APP_CONFIG.name}</p><p className="text-[10px] text-gray-400">{APP_CONFIG.tagline}</p></div>
